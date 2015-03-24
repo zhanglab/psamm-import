@@ -190,12 +190,37 @@ class ImportiMA945(Importer):
                                              subsystem=None, ec=None)
 
 
-def read_irr1083(excel_path):
-    """Read compounds and reactions for iRR1083 model"""
+class ImportiRR1083(Importer):
+    name = 'irr1083'
+    title = ('Salmonella enterica iRR1083 (Excel format),'
+             ' Raghunathan et al., 2009')
 
-    book = xlrd.open_workbook(excel_path)
+    filename = '1752-0509-3-38-s1.xls'
 
-    def read_compounds(sheet):
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:\n'
+              '- {}'.format(self.filename))
+
+    def import_model(self, source):
+        if os.path.isdir(source):
+            source = os.path.join(source, self.filename)
+
+        self._book = xlrd.open_workbook(source)
+
+        model = MetabolicModel(
+            'iRR1083', self._read_compounds(), self._read_reactions())
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
+
+    def _read_compounds(self):
+        sheet = self._book.sheet_by_name('Metabolites')
         for i in range(1, sheet.nrows):
             compound_id, name, formula_neutral, charge, kegg = (
                 sheet.row_values(i))
@@ -223,7 +248,8 @@ def read_irr1083(excel_path):
                                   charge=charge, kegg=kegg, cas=None)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._book.sheet_by_name('Gene Protein Reaction iRR1083')
         for i in range(3, sheet.nrows):
             genes, protein, reaction_id, name, equation, subsystem = (
                 sheet.row_values(i, end_colx=6))
@@ -231,24 +257,25 @@ def read_irr1083(excel_path):
             if reaction_id.strip() == '':
                 continue
 
-            genes = None if genes == '' else frozenset(m.group(0) for m in re.finditer(r'STM\d+', genes))
+            if genes != '':
+                genes = frozenset(m.group(0)
+                                  for m in re.finditer(r'STM\d+', genes))
+            else:
+                genes = None
+
             protein = None if protein == '' else protein
             name = None if name == '' else name
-            equation = None if equation == '' else parse_metnet_reaction(equation)
+
+            if equation != '':
+                equation = parse_metnet_reaction(equation)
+            else:
+                equation = None
+
             subsystem = None if subsystem == '' else subsystem
-            yield reaction_id, ReactionEntry(id=reaction_id, name=name, genes=genes, equation=equation,
-                                             subsystem=None, ec=None)
 
-    model = MetabolicModel(
-        'iRR1083', read_compounds(book.sheet_by_name('Metabolites')),
-        read_reactions(book.sheet_by_name('Gene Protein Reaction iRR1083')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
+            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                  equation=equation, subsystem=None, ec=None)
+            yield reaction_id, entry
 
 
 def read_ijo1366(excel_path):
