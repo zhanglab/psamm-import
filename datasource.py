@@ -373,12 +373,36 @@ class ImportiJO1366(Importer):
             yield reaction_id, entry
 
 
-def read_ecoli_textbook(excel_path):
-    """Read compounds and reactions for E coli textbook model"""
+class EColiTextbookImport(Importer):
+    name = 'ecoli_textbook'
+    title = ('Escerichia coli Textbook (core) model (Excel format),'
+             ' Orth et al., 2010')
 
-    book = xlrd.open_workbook(excel_path)
+    filename = 'ecoli_core_model.xls'
 
-    def read_compounds(sheet):
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:\n'
+              '- {}'.format(self.filename))
+
+    def import_model(self, source):
+        if os.path.isdir(source):
+            source = os.path.join(source, self.filename)
+
+        self._book = xlrd.open_workbook(source)
+
+        model = MetabolicModel(
+            'EColi_textbook', self._read_compounds(), self._read_reactions())
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError('Compound {}, {} not defined in compound table'.format(
+                reaction_id, compound_name))
+
+        return model
+
+    def _read_compounds(self):
+        sheet = self._book.sheet_by_name('metabolites')
         for i in range(1, sheet.nrows):
             (compound_id, name, formula, charge, cas, formula_neutral,
                 alt_names, kegg) = sheet.row_values(i, end_colx=8)
@@ -418,7 +442,8 @@ def read_ecoli_textbook(excel_path):
                                   charge=charge, kegg=kegg, cas=cas)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._book.sheet_by_name('reactions')
         for i in range(1, sheet.nrows):
             (reaction_id, name, equation, subsystem, ec, _, _, _, _, _,
                 genes) = sheet.row_values(i, end_colx=11)
@@ -426,23 +451,26 @@ def read_ecoli_textbook(excel_path):
             if reaction_id.strip() == '':
                 continue
 
-            genes = None if genes.strip() == '' else frozenset(m.group(0) for m in re.finditer(r'[sb]\d+', genes))
+            if genes.strip() != '':
+                genes = frozenset(m.group(0)
+                                  for m in re.finditer(r'[sb]\d+', genes))
+            else:
+                genes = None
+
             name = None if name.strip() == '' else name
-            equation = None if equation.strip() == '' else parse_metnet_reaction(equation)
+
+            if equation.strip() != '':
+                equation = parse_metnet_reaction(equation)
+            else:
+                equation = None
+
             subsystem = None if subsystem.strip() == '' else subsystem
-            yield reaction_id, ReactionEntry(id=reaction_id, name=name, genes=genes, equation=equation,
-                                             subsystem=subsystem, ec=ec)
+            ec = None if ec.strip() == '' else ec
 
-    model = MetabolicModel(
-        'EColi_textbook', read_compounds(book.sheet_by_name('metabolites')),
-        read_reactions(book.sheet_by_name('reactions')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
+            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                  equation=equation, subsystem=subsystem,
+                                  ec=ec)
+            yield reaction_id, entry
 
 
 def read_stm_v1_0(excel_path):
