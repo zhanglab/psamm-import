@@ -561,13 +561,42 @@ class ImportSTMv1_0(Importer):
             yield reaction_id, entry
 
 
-def read_ijn746(compound_excel_path, reaction_excel_path):
-    """Read compounds and reactions for iJN746 model"""
+class ImportiJN746(Importer):
+    name = 'ijn746'
+    title = ('Pseudomonas putida iJN746 (Excel format),'
+             ' Nogales et al., 2011')
 
-    compound_book = xlrd.open_workbook(compound_excel_path)
-    reaction_book = xlrd.open_workbook(reaction_excel_path)
+    filenames = ('1752-0509-2-79-s8.xls',
+                 '1752-0509-2-79-s9.xls')
 
-    def read_compounds(sheet):
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:')
+        for filename in self.filenames:
+            print('- {}'.format(filename))
+
+    def import_model(self, source):
+        if os.path.isdir(source):
+            compound_source = os.path.join(source, self.filenames[0])
+            reaction_source = os.path.join(source, self.filenames[1])
+        else:
+            raise ParseError('Source must be a directory')
+
+        self._compound_book = xlrd.open_workbook(compound_source)
+        self._reaction_book = xlrd.open_workbook(reaction_source)
+
+        model = MetabolicModel(
+            'iJN746', self._read_compounds(), self._read_reactions())
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+        return model
+
+    def _read_compounds(self):
+        sheet = self._compound_book.sheet_by_name('Additional file 8')
         for i in range(1, sheet.nrows):
             (compound_id, name, formula, charge, cas, formula_neutral, _,
                 kegg) = sheet.row_values(i, end_colx=8)
@@ -605,7 +634,8 @@ def read_ijn746(compound_excel_path, reaction_excel_path):
                                   charge=charge, kegg=kegg, cas=cas)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._reaction_book.sheet_by_name('Additional file 9')
         for i in range(1, sheet.nrows):
             reaction_id, name, equation, subsystem, ec, _, genes = (
                 sheet.row_values(i, end_colx=7))
@@ -633,17 +663,6 @@ def read_ijn746(compound_excel_path, reaction_excel_path):
                                   genes=genes, equation=equation,
                                   subsystem=subsystem, ec=ec)
             yield reaction_id, entry
-
-    model = MetabolicModel('iJN746',
-        read_compounds(compound_book.sheet_by_name('Additional file 8')),
-        read_reactions(reaction_book.sheet_by_name('Additional file 9')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
 
 
 def read_ijp815(excel_path):
