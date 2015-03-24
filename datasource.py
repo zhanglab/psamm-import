@@ -473,12 +473,36 @@ class EColiTextbookImport(Importer):
             yield reaction_id, entry
 
 
-def read_stm_v1_0(excel_path):
-    """Read compounds and reactions for STM_v1.0 model"""
+class ImportSTMv1_0(Importer):
+    name = 'stm_v1.0'
+    title = ('Salmonella enterica STM_v1.0 (Excel format),'
+             ' Thiele et al., 2011')
 
-    book = xlrd.open_workbook(excel_path)
+    filename = '1752-0509-5-8-s1.xlsx'
 
-    def read_compounds(sheet):
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:\n'
+              '- {}'.format(self.filename))
+
+    def import_model(self, source):
+        if os.path.isdir(source):
+            source = os.path.join(source, self.filename)
+
+        self._book = xlrd.open_workbook(source)
+
+        model = MetabolicModel(
+            'STM_v1.0', self._read_compounds(), self._read_reactions())
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+        return model
+
+    def _read_compounds(self):
+        sheet = self._book.sheet_by_name('SI Tables - S2b - Metabolites')
         for i in range(2, sheet.nrows):
             _, compound_id, name, formula, charge, _, kegg, pubchem, chebi = (
                 sheet.row_values(i, end_colx=9))
@@ -486,7 +510,7 @@ def read_stm_v1_0(excel_path):
             if compound_id.strip() == '':
                 continue
 
-            name = None if name.strip() == '' else name
+            name = None if name.strip() == '' else name.strip()
 
             if formula.strip() != '':
                 formula = Formula.parse(formula)
@@ -506,7 +530,8 @@ def read_stm_v1_0(excel_path):
                                   charge=charge, kegg=kegg, cas=None)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._book.sheet_by_name('SI Tables - S2a - Reactions')
         for i in range(4, sheet.nrows):
             reaction_id, name, equation, genes, _, subsystem = (
                 sheet.row_values(i, end_colx=6))
@@ -514,7 +539,7 @@ def read_stm_v1_0(excel_path):
             if reaction_id.strip() == '':
                 continue
 
-            name = None if name.strip() == '' else name
+            name = None if name.strip() == '' else name.strip()
 
             if equation.strip() != '':
                 equation = parse_sudensimple_reaction(equation,
@@ -534,17 +559,6 @@ def read_stm_v1_0(excel_path):
                                   genes=genes, equation=equation,
                                   subsystem=subsystem, ec=None)
             yield reaction_id, entry
-
-    model = MetabolicModel('STM_v1.0',
-        read_compounds(book.sheet_by_name('SI Tables - S2b - Metabolites')),
-        read_reactions(book.sheet_by_name('SI Tables - S2a - Reactions')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
 
 
 def read_ijn746(compound_excel_path, reaction_excel_path):
