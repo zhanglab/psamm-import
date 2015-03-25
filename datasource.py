@@ -1156,12 +1156,37 @@ class ImportGSMN_TB(Importer):
             yield reaction_id, entry
 
 
-def read_mtuberc_jamshidi(excel_path):
-    """Read compounds and reactions for M. tuberculosis Jamshidi (iNJ661)"""
+class ImportiNJ661(Importer):
+    name = 'inj661'
+    title = ('Mycobacterium tuberculosis iNJ661 (Excel format),'
+             ' Jamshidi et al., 2007')
 
-    book = xlrd.open_workbook(excel_path)
+    filename = '1752-0509-1-26-s5.xls'
 
-    def read_compounds(sheet):
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:\n'
+              '- {}'.format(self.filename))
+
+    def import_model(self, source):
+        if os.path.isdir(source):
+            source = os.path.join(source, self.filename)
+
+        self._book = xlrd.open_workbook(source)
+
+        model = MetabolicModel(
+            'iNJ661', self._read_compounds(), self._read_reactions())
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
+
+    def _read_compounds(self):
+        sheet = self._book.sheet_by_name('metabolites')
         for i in range(1, sheet.nrows):
             compound_id, name, formula, charge = sheet.row_values(
                 i, end_colx=4)
@@ -1187,7 +1212,8 @@ def read_mtuberc_jamshidi(excel_path):
                                   charge=charge, kegg=None, cas=None)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._book.sheet_by_name('iNJ661')
         for i in range(5, sheet.nrows):
             reaction_id, name, equation, _, subsystem, _, genes = (
                 sheet.row_values(i, end_colx=7))
@@ -1213,18 +1239,6 @@ def read_mtuberc_jamshidi(excel_path):
                                   genes=genes, equation=equation,
                                   subsystem=subsystem, ec=None)
             yield reaction_id, entry
-
-    model = MetabolicModel(
-        'M_tuberculosis_jamshidi',
-        read_compounds(book.sheet_by_name('metabolites')),
-        read_reactions(book.sheet_by_name('iNJ661')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
 
 
 def read_mtuberc_fang(name, excel_path):
