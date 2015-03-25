@@ -26,6 +26,14 @@ def dict_constructor(loader, node):
     return OrderedDict(loader.construct_pairs(node))
 
 
+def recursive_subclasses(cls):
+    """Yield all subclasses of a class recursively"""
+    for subclass in cls.__subclasses__():
+        for subsubclass in recursive_subclasses(subclass):
+            yield subsubclass
+        yield subclass
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Import from external model formats')
@@ -42,13 +50,13 @@ if __name__ == '__main__':
 
     # Discover all available model importers
     importers = {}
-    for importer_class in Importer.__subclasses__():
-            importer_name = getattr(importer_class, 'name', None)
-            importer_title = getattr(importer_class, 'title', None)
-            if (importer_name is not None and
-                    importer_title is not None and
-                    importer_name not in importers):
-                importers[importer_name] = importer_class
+    for importer_class in recursive_subclasses(Importer):
+        importer_name = getattr(importer_class, 'name', None)
+        importer_title = getattr(importer_class, 'title', None)
+        if (importer_name is not None and
+                importer_title is not None and
+                importer_name not in importers):
+            importers[importer_name] = importer_class
 
     # Print list of importers
     if args.format in ('list', 'help'):
