@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import os
+import glob
 import re
 import csv
 from collections import namedtuple
@@ -1345,41 +1346,83 @@ class ImportiNJ661v(ImportGenericiNJ661mv):
         return self.import_model_named('iNJ661v', source)
 
 
-def read_modelseed(name, excel_path, ptt_file):
+class ImportModelSEED(Importer):
     """Read metabolic model for a ModelSEED model"""
 
-    book = xlrd.open_workbook(excel_path)
+    name = 'modelseed'
+    title = 'ModelSEED model (Excel format)'
 
-    # Read mapping from location to gene ID from PTT file
-    location_mapping = {}
-    for i in range(3):
-        ptt_file.readline() # Skip headers
-    for row in csv.reader(ptt_file, delimiter='\t'):
-        location, direction, _, _, _, gene_id = row[:6]
+    def help(self):
+        print('Source must contain the model definition in Excel format\n'
+              ' and a PTT file for mapping PEG gene names.'
+              'Expected files in source directory:\n'
+              '- Seed*.xls\n'
+              '- NC_*.ptt')
 
-        start, stop = re.match(r'^(\d+)\.\.(\d+)$', location).groups()
-        start, stop = int(start), int(stop)
+    def import_model(self, source):
+        if not os.path.isdir(source):
+            raise ParseError('Source must be a directory')
 
-        location_mapping[start, stop, direction] = gene_id
+        excel_sources = glob.glob(os.path.join(source, 'Seed*.xls'))
+        if len(excel_sources) == 0:
+            raise ParseError('No .xls file found in source directory')
+        elif len(excel_sources) > 1:
+            raise ParseError(
+                'More than one .xls file found in source directory')
 
-    # Read mapping from PEG to gene ID
-    peg_mapping = {}
-    sheet = book.sheet_by_name('Genes')
-    for i in range(1, sheet.nrows):
-        gene_id, gene_type, _, start, stop, direction = sheet.row_values(
-            i, end_colx=6)
+        ptt_sources = glob.glob(os.path.join(source, '*.ptt'))
+        if len(ptt_sources) == 0:
+            raise ParseError('No .ptt file found in source directory')
+        elif len(ptt_sources) > 1:
+            raise ParseError(
+                'More than one .ptt file found in source directory')
 
-        m = re.match(r'^.*(peg.\d+)$', gene_id)
-        if not m:
-            continue
+        self._book = xlrd.open_workbook(excel_sources[0])
 
-        peg_id = m.group(1)
-        direction = '+' if direction == 'for' else '-'
-        start, stop = int(start), int(stop)
+        with open(ptt_sources[0], 'r') as ptt_file:
+            # Read mapping from location to gene ID from PTT file
+            location_mapping = {}
+            for i in range(3):
+                ptt_file.readline() # Skip headers
+            for row in csv.reader(ptt_file, delimiter='\t'):
+                location, direction, _, _, _, gene_id = row[:6]
 
-        peg_mapping[peg_id] = location_mapping[start, stop, direction]
+                start, stop = re.match(r'^(\d+)\.\.(\d+)$', location).groups()
+                start, stop = int(start), int(stop)
 
-    def read_compounds(sheet):
+                location_mapping[start, stop, direction] = gene_id
+
+        # Read mapping from PEG to gene ID
+        peg_mapping = {}
+        sheet = self._book.sheet_by_name('Genes')
+        for i in range(1, sheet.nrows):
+            gene_id, gene_type, _, start, stop, direction = sheet.row_values(
+                i, end_colx=6)
+
+            m = re.match(r'^.*(peg.\d+)$', gene_id)
+            if not m:
+                continue
+
+            peg_id = m.group(1)
+            direction = '+' if direction == 'for' else '-'
+            start, stop = int(start), int(stop)
+
+            peg_mapping[peg_id] = location_mapping[start, stop, direction]
+
+        model = MetabolicModel(
+            'ModelSEED model', self._read_compounds(),
+            self._read_reactions(peg_mapping))
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
+
+    def _read_compounds(self):
+        sheet = self._book.sheet_by_name('Compounds')
         for i in range(1, sheet.nrows):
             compound_id, name, alt_name, formula, charge, _ = (
                 sheet.row_values(i, end_colx=6))
@@ -1389,12 +1432,18 @@ def read_modelseed(name, excel_path, ptt_file):
 
             charge = int(charge) if charge != '' else None
 
+            if formula.strip() != '':
+                formula = formula.strip()
+            else:
+                formula = None
+
             entry = CompoundEntry(id=compound_id, name=name, formula=formula,
                                   formula_neutral=None, charge=charge,
                                   kegg=None, cas=None)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self, peg_mapping):
+        sheet = self._book.sheet_by_name('Reactions')
         for i in range(1, sheet.nrows):
             reaction_id, name, equation, _, ec_list, _, _, pegs = (
                 sheet.row_values(i, end_colx=8))
@@ -1431,14 +1480,3 @@ def read_modelseed(name, excel_path, ptt_file):
             entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
                                   equation=equation, subsystem=None, ec=ec)
             yield reaction_id, entry
-
-    model = MetabolicModel(
-        name, read_compounds(book.sheet_by_name('Compounds')),
-        read_reactions(book.sheet_by_name('Reactions')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
