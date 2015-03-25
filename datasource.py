@@ -756,111 +756,36 @@ class ImportiJP815(Importer):
             yield reaction_id, entry
 
 
-def read_modelseed(name, excel_path, ptt_file):
-    """Read metabolic model for a ModelSEED model"""
+class ImportiSyn731(Importer):
+    name = 'isyn731'
+    title = ('Synechocystis sp. PCC 6803 iSyn731 (Excel format),'
+             ' Saha et al., 2008')
 
-    book = xlrd.open_workbook(excel_path)
+    filename = 'journal.pone.0048285.s001.XLSX'
 
-    # Read mapping from location to gene ID from PTT file
-    location_mapping = {}
-    for i in range(3):
-        ptt_file.readline() # Skip headers
-    for row in csv.reader(ptt_file, delimiter='\t'):
-        location, direction, _, _, _, gene_id = row[:6]
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:\n'
+              '- {}'.format(self.filename))
 
-        start, stop = re.match(r'^(\d+)\.\.(\d+)$', location).groups()
-        start, stop = int(start), int(stop)
+    def import_model(self, source):
+        if os.path.isdir(source):
+            source = os.path.join(source, self.filename)
 
-        location_mapping[start, stop, direction] = gene_id
+        self._book = xlrd.open_workbook(source)
 
-    # Read mapping from PEG to gene ID
-    peg_mapping = {}
-    sheet = book.sheet_by_name('Genes')
-    for i in range(1, sheet.nrows):
-        gene_id, gene_type, _, start, stop, direction = sheet.row_values(
-            i, end_colx=6)
+        model = MetabolicModel(
+            'iSyn731', self._read_compounds(), self._read_reactions())
 
-        m = re.match(r'^.*(peg.\d+)$', gene_id)
-        if not m:
-            continue
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+        return model
 
-        peg_id = m.group(1)
-        direction = '+' if direction == 'for' else '-'
-        start, stop = int(start), int(stop)
-
-        peg_mapping[peg_id] = location_mapping[start, stop, direction]
-
-    def read_compounds(sheet):
-        for i in range(1, sheet.nrows):
-            compound_id, name, alt_name, formula, charge, _ = (
-                sheet.row_values(i, end_colx=6))
-
-            if compound_id.strip() == '':
-                continue
-
-            charge = int(charge) if charge != '' else None
-
-            entry = CompoundEntry(id=compound_id, name=name, formula=formula,
-                                  formula_neutral=None, charge=charge,
-                                  kegg=None, cas=None)
-            yield compound_id, entry
-
-    def read_reactions(sheet):
-        for i in range(1, sheet.nrows):
-            reaction_id, name, equation, _, ec_list, _, _, pegs = (
-                sheet.row_values(i, end_colx=8))
-
-            if reaction_id.strip() == '':
-                continue
-
-            name = name if name.strip() != '' else None
-
-            if equation != '' and 'NONE' not in equation:
-                equation = modelseed.parse_reaction(equation)
-            else:
-                continue
-
-            if pegs != '':
-                pegs = frozenset(m.group(0) for m in
-                                  re.finditer(r'peg\.(\d+)', pegs))
-                genes = frozenset(peg_mapping[p] for p in pegs)
-            else:
-                pegs = None
-                genes = None
-
-            if ec_list == '':
-                ec_list = None
-                ec = None
-            elif '|' in ec_list:
-                ec_list = frozenset(ec.strip() for ec in ec_list.split('|')
-                                    if ec.strip() != '')
-                ec = next(iter(ec_list))
-            else:
-                ec_list = frozenset([ec_list])
-                ec = next(iter(ec_list))
-
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=None, ec=ec)
-            yield reaction_id, entry
-
-    model = MetabolicModel(
-        name, read_compounds(book.sheet_by_name('Compounds')),
-        read_reactions(book.sheet_by_name('Reactions')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
-
-
-def read_cyanotheca_saha(excel_path):
-    """Read compounds and reactions for Saha Cyanotheca model"""
-
-    book = xlrd.open_workbook(excel_path)
-
-    def read_compounds(sheet):
+    def _read_compounds(self):
+        sheet = self._book.sheet_by_name('Metabolites')
         for i in range(1, sheet.nrows):
             compound_id, name, formula, charge, kegg = (
                 sheet.row_values(i))
@@ -895,7 +820,11 @@ def read_cyanotheca_saha(excel_path):
             else:
                 formula = None
 
-            kegg = None if kegg == '' else kegg
+            if kegg != 0 and kegg.strip() != '':
+                # Discard secondary KEGG IDs
+                kegg = kegg.split('|')[0]
+            else:
+                kegg = None
 
             entry = CompoundEntry(id=compound_id, name=name,
                                   formula=formula,
@@ -903,50 +832,43 @@ def read_cyanotheca_saha(excel_path):
                                   charge=charge, kegg=kegg, cas=None)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._book.sheet_by_name('Model')
         for i in range(2, sheet.nrows):
             reaction_id, name, ec, genes, _, equation, subsystem = (
                 sheet.row_values(i, end_colx=7))
             if reaction_id.strip() == 'EX_Arsenic acid':
-                reaction_id = re.sub(r'EX_Arsenic acid', 'EX_Arsenic_acid', reaction_id)
+                reaction_id = 'EX_Arsenic_acid'
             if reaction_id.strip() == '':
                 continue
 
-            # Fixup model errors
-
             name = None if name == '' else name
 
-            #equation = None if equation.strip() == '' else modelseed.parse_reaction(equation)
             if equation.strip() != '':
+                # check that this works correctly. should substitute the => for a
+                # space then =>. the double spaces should be ignored though.
+                equation = re.sub(r'=>', ' =>', equation)
+                equation = re.sub(r'< =>', '<=>', equation)
+                equation = re.sub(r'\s+', ' ', equation)
+                equation = re.sub(r'\(1\)\|', '(1) |', equation)
+                equation = re.sub(r'\+\(1\)', '+ (1)', equation)
+                equation = re.sub(r'\|\|', '|', equation)
+                equation = modelseed.parse_reaction(equation)
+            else:
+                equation = None
 
-              #check that this works correctly. should substitute the => for a space then =>. the double spaces should be ignored though.
-              equation = re.sub(r'=>', ' =>', equation)
-              equation = re.sub(r'< =>', '<=>', equation)
-              equation = re.sub(r'\s+', ' ', equation)
-              equation = re.sub(r'\(1\)\|', '(1) |', equation)
-              equation = re.sub(r'\+\(1\)', '+ (1)', equation)
-              equation = re.sub(r'\|\|', '|', equation)
-              equation = modelseed.parse_reaction(equation)
-            else: equation = None
             if genes != '':
                 genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'sll[0-9]+', genes))
+                                  for m in re.finditer(r'\w+\d+', genes))
             else:
                 genes = None
 
-            yield reaction_id, ReactionEntry(id=reaction_id, name=name,
-                                             genes=genes, equation=equation,
-                                             subsystem=subsystem, ec=ec)
-    model = MetabolicModel(
-        'cyanotheca_saha', read_compounds(book.sheet_by_name('Metabolites')),
-        read_reactions(book.sheet_by_name('Model')))
+            ec = ec if ec.strip() != '' and ec != 'Undetermined' else None
 
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
+            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                  equation=equation, subsystem=subsystem,
+                                  ec=ec)
+            yield reaction_id, entry
 
 
 def read_cyanotheca_vu(reaction_excel_path, compound_excel_path):
@@ -1296,6 +1218,105 @@ def read_mtuberc_fang(name, excel_path):
     model = MetabolicModel(name,
         read_compounds(book.sheet_by_name('metabolites')),
         read_reactions(book.sheet_by_name('reactions')))
+
+    reaction_id, compound_name = model.check_reaction_compounds()
+    if compound_name is not None:
+        raise ParseError('Compound {}, {} not defined in compound table'.format(
+            reaction_id, compound_name))
+
+    return model
+
+
+def read_modelseed(name, excel_path, ptt_file):
+    """Read metabolic model for a ModelSEED model"""
+
+    book = xlrd.open_workbook(excel_path)
+
+    # Read mapping from location to gene ID from PTT file
+    location_mapping = {}
+    for i in range(3):
+        ptt_file.readline() # Skip headers
+    for row in csv.reader(ptt_file, delimiter='\t'):
+        location, direction, _, _, _, gene_id = row[:6]
+
+        start, stop = re.match(r'^(\d+)\.\.(\d+)$', location).groups()
+        start, stop = int(start), int(stop)
+
+        location_mapping[start, stop, direction] = gene_id
+
+    # Read mapping from PEG to gene ID
+    peg_mapping = {}
+    sheet = book.sheet_by_name('Genes')
+    for i in range(1, sheet.nrows):
+        gene_id, gene_type, _, start, stop, direction = sheet.row_values(
+            i, end_colx=6)
+
+        m = re.match(r'^.*(peg.\d+)$', gene_id)
+        if not m:
+            continue
+
+        peg_id = m.group(1)
+        direction = '+' if direction == 'for' else '-'
+        start, stop = int(start), int(stop)
+
+        peg_mapping[peg_id] = location_mapping[start, stop, direction]
+
+    def read_compounds(sheet):
+        for i in range(1, sheet.nrows):
+            compound_id, name, alt_name, formula, charge, _ = (
+                sheet.row_values(i, end_colx=6))
+
+            if compound_id.strip() == '':
+                continue
+
+            charge = int(charge) if charge != '' else None
+
+            entry = CompoundEntry(id=compound_id, name=name, formula=formula,
+                                  formula_neutral=None, charge=charge,
+                                  kegg=None, cas=None)
+            yield compound_id, entry
+
+    def read_reactions(sheet):
+        for i in range(1, sheet.nrows):
+            reaction_id, name, equation, _, ec_list, _, _, pegs = (
+                sheet.row_values(i, end_colx=8))
+
+            if reaction_id.strip() == '':
+                continue
+
+            name = name if name.strip() != '' else None
+
+            if equation != '' and 'NONE' not in equation:
+                equation = modelseed.parse_reaction(equation)
+            else:
+                continue
+
+            if pegs != '':
+                pegs = frozenset(m.group(0) for m in
+                                  re.finditer(r'peg\.(\d+)', pegs))
+                genes = frozenset(peg_mapping[p] for p in pegs)
+            else:
+                pegs = None
+                genes = None
+
+            if ec_list == '':
+                ec_list = None
+                ec = None
+            elif '|' in ec_list:
+                ec_list = frozenset(ec.strip() for ec in ec_list.split('|')
+                                    if ec.strip() != '')
+                ec = next(iter(ec_list))
+            else:
+                ec_list = frozenset([ec_list])
+                ec = next(iter(ec_list))
+
+            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                  equation=equation, subsystem=None, ec=ec)
+            yield reaction_id, entry
+
+    model = MetabolicModel(
+        name, read_compounds(book.sheet_by_name('Compounds')),
+        read_reactions(book.sheet_by_name('Reactions')))
 
     reaction_id, compound_name = model.check_reaction_compounds()
     if compound_name is not None:
