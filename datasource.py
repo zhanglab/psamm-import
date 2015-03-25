@@ -759,7 +759,7 @@ class ImportiJP815(Importer):
 class ImportiSyn731(Importer):
     name = 'isyn731'
     title = ('Synechocystis sp. PCC 6803 iSyn731 (Excel format),'
-             ' Saha et al., 2008')
+             ' Saha et al., 2012')
 
     filename = 'journal.pone.0048285.s001.XLSX'
 
@@ -874,7 +874,7 @@ class ImportiSyn731(Importer):
 class ImportiCce806(Importer):
     name = 'icce806'
     title = ('Cyanothece sp. ATCC 51142 iCce806 (Excel format),'
-             ' Vu et al., 2008')
+             ' Vu et al., 2012')
 
     filenames = ('journal.pcbi.1002460.s005.XLSX',
                  'journal.pcbi.1002460.s006.XLSX')
