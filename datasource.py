@@ -1011,15 +1011,45 @@ class ImportiCce806(Importer):
                                              subsystem=subsystem, ec=ec)
 
 
-def read_mtuberc_beste(reaction_excel_path, compound_excel_path):
-    """Read compounds and reactions for M. tuberculosis Beste model"""
+class ImportGSMN_TB(Importer):
+    name = 'gsmn-tb'
+    title = ('Mycobacterium tuberculosis GSMN-TB (Excel format),'
+             ' Beste et al., 2007')
 
-    reaction_book = xlrd.open_workbook(reaction_excel_path)
-    compound_book = xlrd.open_workbook(compound_excel_path)
+    filenames = ('gb-2007-8-5-r89-s4.xls',
+                 'gb-2007-8-5-r89-s6.xls')
 
-    def read_compounds(sheet):
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:')
+        for filename in self.filenames:
+            print('- {}'.format(filename))
+
+    def import_model(self, source):
+        if os.path.isdir(source):
+            reaction_source = os.path.join(source, self.filenames[0])
+            compound_source = os.path.join(source, self.filenames[1])
+        else:
+            raise ParseError('Source must be a directory')
+
+        self._compound_book = xlrd.open_workbook(compound_source)
+        self._reaction_book = xlrd.open_workbook(reaction_source)
+
+        model = MetabolicModel(
+            'GSMN-TB', self._read_compounds(), self._read_reactions())
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
+
+    def _read_compounds(self):
+        sheet = self._compound_book.sheet_by_name('File 6')
         for i in range(2, sheet.nrows):
-            (compound_id, name) = sheet.row_values(i, end_colx=2)
+            compound_id, name = sheet.row_values(i, end_colx=2)
 
             if compound_id.strip() == '':
                 continue
@@ -1056,36 +1086,45 @@ def read_mtuberc_beste(reaction_excel_path, compound_excel_path):
                                   charge=None, kegg=None, cas=None)
             yield compound_id, entry
 
+        def create_missing(compound_id, name=None):
+            if name is None:
+                name = compound_id
+            return compound_id, CompoundEntry(
+                id=compound_id, name=name, formula=None, formula_neutral=None,
+                charge=None, kegg=None, cas=None)
+
         # Generate missing compounds
-        yield 'MBT-HOLO', CompoundEntry(id='MBT-HOLO', name='Mycobactin-Holo',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'TAGbio', CompoundEntry(id='TAGbio', name='Triacylglycerol-bio',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'TREHALOSEMONOMYCOLATE(CY)', CompoundEntry(id='TREHALOSEMONOMYCOLATE(CY)', name='Trehalosemonomycolate(cy)',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'MYCOTHIOL-S-CONJUGATE', CompoundEntry(id='MYCOTHIOL-S-CONJUGATE', name='Mycothiol-S-conjugate',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'N-ACETYL-S-CONJUGATE', CompoundEntry(id='N-ACETYL-S-CONJUGATE', name='N-actyl-s-conjugate',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield '(n-1)POLYP', CompoundEntry(id='(n-1)POLYP', name='(n-1)Polyphosphate',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield '(n)POLYP', CompoundEntry(id='(n)POLYP', name='(n)Polyphosphate',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'HYDROXYGLU', CompoundEntry(id='HYDROXYGLU', name='Hydroxy-glutamate',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'OCTANOYL-ACP', CompoundEntry(id='OCTANOYL-ACP', name='OCTANOYL-Acyl-Carrier-Protein',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'UDP[NAM:NGM]ALA', CompoundEntry(id='UDP[NAM:NGM]ALA', name='UDP[NAM:NGM]ALA',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'UDP[NAM:NGM]ALAGLU', CompoundEntry(id='UDP[NAM:NGM]ALAGLU', name='UDP[NAM:NGM]ALAGLU',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'UDP[NAM:NGM]AGMDAPIMAA', CompoundEntry(id='UDP[NAM:NGM]AGMDAPIMAA', name='UDP[NAM:NGM]AGMDAPIMAA',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'UDP[NAM:NGM]AGMDAPIM', CompoundEntry(id='UDP[NAM:NGM]AGMDAPIM', name='UDP[NAM:NGM]AGMDAPIM',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'MOLYBDENUM-CO', CompoundEntry(id='MOLYBDENUM-CO', name='MOLYBDENUM-COfactor',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'CISACONITATE', CompoundEntry(id='CISACONITATE', name='CISACONITATE',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'ELECTROPHILE-X', CompoundEntry(id='ELECTROPHILE-X', name='ELECTROPHILE-X',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'H2X', CompoundEntry(id='H2X', name='H2X',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'TAGcat', CompoundEntry(id='TAGcat', name='TracylGlycerol Cat',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'METHYLISOCITRATE', CompoundEntry(id='METHYLISOCITRATE', name='Methyl-Isocitrate',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'ARA[1]GALACTANDPP', CompoundEntry(id='ARA[1]GALACTANDPP', name='ARA[1]GALACTANDPP',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'MPM', CompoundEntry(id='MPM', name='Methyl Pyrimidine',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'APO-LIPO', CompoundEntry(id='APO-LIPO', name='apo-lipo-amide',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'BIOMASSxt', CompoundEntry(id='BIOMASSxt', name='Biomass extracellular',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
-        yield 'GLUCAN', CompoundEntry(id='GLUCAN', name='Glucanate',formula=None, formula_neutral=None, charge=None, kegg=None, cas=None)
+        yield create_missing('MBT-HOLO', 'Mycobactin-Holo')
+        yield create_missing('TAGbio', 'Triacylglycerol-bio')
+        yield create_missing('TREHALOSEMONOMYCOLATE(CY)',
+                             'Trehalosemonomycolate(cy)')
+        yield create_missing('MYCOTHIOL-S-CONJUGATE', 'Mycothiol-S-conjugate')
+        yield create_missing('N-ACETYL-S-CONJUGATE', 'N-actyl-s-conjugate')
+        yield create_missing('(n-1)POLYP', '(n-1)Polyphosphate')
+        yield create_missing('(n)POLYP', '(n)Polyphosphate')
+        yield create_missing('HYDROXYGLU', 'Hydroxy-glutamate')
+        yield create_missing('OCTANOYL-ACP', 'OCTANOYL-Acyl-Carrier-Protein')
+        yield create_missing('UDP[NAM:NGM]ALA')
+        yield create_missing('UDP[NAM:NGM]ALAGLU')
+        yield create_missing('UDP[NAM:NGM]AGMDAPIMAA')
+        yield create_missing('UDP[NAM:NGM]AGMDAPIM')
+        yield create_missing('MOLYBDENUM-CO', 'MOLYBDENUM-COfactor')
+        yield create_missing('CISACONITATE')
+        yield create_missing('ELECTROPHILE-X')
+        yield create_missing('H2X')
+        yield create_missing('TAGcat', 'TracylGlycerol Cat')
+        yield create_missing('METHYLISOCITRATE', 'Methyl-Isocitrate')
+        yield create_missing('ARA[1]GALACTANDPP')
+        yield create_missing('MPM', 'Methyl Pyrimidine')
+        yield create_missing('APO-LIPO', 'apo-lipo-amide')
+        yield create_missing('BIOMASSxt', 'Biomass extracellular')
+        yield create_missing('GLUCAN', 'Glucanate')
 
-
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._reaction_book.sheet_by_name('File 4')
         for i in range(5, sheet.nrows):
-            (reaction_id, equation, fluxbound, _, ec, genes, name, subsystem) = sheet.row_values(i, end_colx=8)
+            (reaction_id, equation, fluxbound, _, ec, genes, name,
+                subsystem) = sheet.row_values(i, end_colx=8)
 
 
             if reaction_id.startswith('%') or reaction_id.strip() == '':
@@ -1093,31 +1132,28 @@ def read_mtuberc_beste(reaction_excel_path, compound_excel_path):
             #if not reaction_id.stripstartswith('%'):
             #    continue
             #print(equation)
-            genes = None if genes.strip() == '' else frozenset(m.group(0) for m in re.finditer(r'[Rv]\d+[c]', genes))
+            if genes.strip() != '':
+                genes = frozenset(m.group(0)
+                                  for m in re.finditer(r'Rv\w+', genes))
+            else:
+                genes = None
+
             name = None if name.strip() == '' else name
-            #equation = None if equation.strip() == '' else parse_sudensimple_reaction_fluxdef(equation, fluxbound)
             if equation.strip() != '':
                 equation = re.sub(r'\s+', ' ', equation)
                 equation = parse_sudensimple_reaction(equation, '=')
-                direction = Reaction.Bidir if fluxbound != 0 else Reaction.Right
-                equation = Reaction(direction, equation.left, equation.right)
+                rdir = Reaction.Bidir if fluxbound != 0 else Reaction.Right
+                equation = Reaction(rdir, equation.left, equation.right)
             else:
                 equation = None
+
             subsystem = None if subsystem.strip() == '' else subsystem
-            yield reaction_id, ReactionEntry(id=reaction_id, name=name, genes=genes, equation=equation,
-                                             subsystem=subsystem, ec=ec)
+            ec = None if ec.strip() == '' else ec
 
-    model = MetabolicModel(
-        'M_tuberculosis_beste',
-        read_compounds(compound_book.sheet_by_name('File 6')),
-        read_reactions(reaction_book.sheet_by_name('File 4')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
+            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                  equation=equation, subsystem=subsystem,
+                                  ec=ec)
+            yield reaction_id, entry
 
 
 def read_mtuberc_jamshidi(excel_path):
