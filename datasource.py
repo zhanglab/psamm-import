@@ -1241,12 +1241,37 @@ class ImportiNJ661(Importer):
             yield reaction_id, entry
 
 
-def read_mtuberc_fang(name, excel_path):
-    """Read compounds and reactions for M. tuberculosis FANG iNJ661m/v model"""
+class ImportGenericiNJ661mv(Importer):
+    """Importer for the model iNJ661m and iNJ661v
 
-    book = xlrd.open_workbook(excel_path)
+    For models of Mycobacterium tuberculosis iNJ661m/v (Excel format),
+    Fang et al., 2010.
+    """
 
-    def read_compounds(sheet):
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:\n'
+              '- {}'.format(self.filename))
+
+    def import_model_named(self, name, source):
+        if os.path.isdir(source):
+            source = os.path.join(source, self.filename)
+
+        self._book = xlrd.open_workbook(source)
+
+        model = MetabolicModel(
+            name, self._read_compounds(), self._read_reactions())
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
+
+    def _read_compounds(self):
+        sheet = self._book.sheet_by_name('metabolites')
         for i in range(1, sheet.nrows):
             compound_id, name, formula = sheet.row_values(i, end_colx=3)
 
@@ -1265,7 +1290,8 @@ def read_mtuberc_fang(name, excel_path):
                                   charge=None, kegg=None, cas=None)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._book.sheet_by_name('reactions')
         for i in range(1, sheet.nrows):
             reaction_id, name, equation, genes, _, subsystem = (
                 sheet.row_values(i, end_colx=6))
@@ -1279,7 +1305,7 @@ def read_mtuberc_fang(name, excel_path):
             else:
                 genes = None
 
-            name = None if name.strip() == '' else name
+            name = None if name.strip() == '' else name.strip()
 
             # Biomass reaction is not specified in this table
             if (equation.strip() != '' and
@@ -1298,16 +1324,25 @@ def read_mtuberc_fang(name, excel_path):
                                   subsystem=subsystem, ec=None)
             yield reaction_id, entry
 
-    model = MetabolicModel(name,
-        read_compounds(book.sheet_by_name('metabolites')),
-        read_reactions(book.sheet_by_name('reactions')))
 
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
+class ImportiNJ661m(ImportGenericiNJ661mv):
+    name = 'inj661m'
+    title = ('Mycobacterium tuberculosis iNJ661m (Excel format),'
+        ' Fang et al., 2010')
+    filename = '1752-0509-4-160-s3.xls'
 
-    return model
+    def import_model(self, source):
+        return self.import_model_named('iNJ661m', source)
+
+
+class ImportiNJ661v(ImportGenericiNJ661mv):
+    name = 'inj661v'
+    title = ('Mycobacterium tuberculosis iNJ661v (Excel format),'
+        ' Fang et al., 2010')
+    filename = '1752-0509-4-160-s5.xls'
+
+    def import_model(self, source):
+        return self.import_model_named('iNJ661v', source)
 
 
 def read_modelseed(name, excel_path, ptt_file):
