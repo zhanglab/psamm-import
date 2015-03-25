@@ -871,13 +871,43 @@ class ImportiSyn731(Importer):
             yield reaction_id, entry
 
 
-def read_cyanotheca_vu(reaction_excel_path, compound_excel_path):
-    """Read compounds and reactions for cyanotheca Vu model"""
+class ImportiCce806(Importer):
+    name = 'icce806'
+    title = ('Cyanothece sp. ATCC 51142 iCce806 (Excel format),'
+             ' Vu et al., 2008')
 
-    reaction_book = xlrd.open_workbook(reaction_excel_path)
-    compound_book = xlrd.open_workbook(compound_excel_path)
+    filenames = ('journal.pcbi.1002460.s005.XLSX',
+                 'journal.pcbi.1002460.s006.XLSX')
 
-    def read_compounds(sheet):
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:')
+        for filename in self.filenames:
+            print('- {}'.format(filename))
+
+    def import_model(self, source):
+        if os.path.isdir(source):
+            reaction_source = os.path.join(source, self.filenames[0])
+            compound_source = os.path.join(source, self.filenames[1])
+        else:
+            raise ParseError('Source must be a directory')
+
+        self._compound_book = xlrd.open_workbook(compound_source)
+        self._reaction_book = xlrd.open_workbook(reaction_source)
+
+        model = MetabolicModel(
+            'iCce806', self._read_compounds(), self._read_reactions())
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
+
+    def _read_compounds(self):
+        sheet = self._compound_book.sheet_by_name('Table S2')
         for i in range(1, sheet.nrows):
             compound_id, name, formula, charge, cas, formula_neutral, _, kegg = (
                 sheet.row_values(i))
@@ -914,13 +944,19 @@ def read_cyanotheca_vu(reaction_excel_path, compound_excel_path):
 
             kegg = None if kegg == '' else kegg
 
+            if cas.strip() != '' and cas.strip() != 'None':
+                cas = cas.strip()
+            else:
+                cas = None
+
             entry = CompoundEntry(id=compound_id, name=name,
                                   formula=formula,
                                   formula_neutral=formula,
                                   charge=charge, kegg=kegg, cas=cas)
             yield compound_id, entry
 
-    def read_reactions(sheet):
+    def _read_reactions(self):
+        sheet = self._reaction_book.sheet_by_name('S1 - Reactions')
         for i in range(1, sheet.nrows):
             reaction_id, name, equation, _, genes, subsystem, ec = (
                 sheet.row_values(i, end_colx=7))
@@ -962,20 +998,17 @@ def read_cyanotheca_vu(reaction_excel_path, compound_excel_path):
             else:
                 genes = None
 
+            m = re.match(r'EC-(.*)', ec)
+            if m:
+                ec = m.group(1)
+                if ec == 'Undetermined':
+                    ec = None
+            else:
+                ec = None
+
             yield reaction_id, ReactionEntry(id=reaction_id, name=name,
                                              genes=genes, equation=equation,
                                              subsystem=subsystem, ec=ec)
-    model = MetabolicModel(
-        'cyanotheca_vu',
-        read_compounds(compound_book.sheet_by_name('Table S2')),
-        read_reactions(reaction_book.sheet_by_name('S1 - Reactions')))
-
-    reaction_id, compound_name = model.check_reaction_compounds()
-    if compound_name is not None:
-        raise ParseError('Compound {}, {} not defined in compound table'.format(
-            reaction_id, compound_name))
-
-    return model
 
 
 def read_mtuberc_beste(reaction_excel_path, compound_excel_path):
