@@ -138,15 +138,19 @@ if __name__ == '__main__':
     yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                          dict_constructor)
 
+    yaml_args = {'default_flow_style': False,
+                 'encoding': 'utf-8',
+                 'allow_unicode': True}
+
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
-        yaml.dump(list(model_compounds()), f, default_flow_style=False)
+        yaml.dump(list(model_compounds()), f, **yaml_args)
 
     with open(os.path.join(dest, 'reactions.yaml'), 'w+') as f:
-        yaml.dump(list(model_reactions()), f, default_flow_style=False)
+        yaml.dump(list(model_reactions()), f, **yaml_args)
 
     with open(os.path.join(dest, 'model.yaml'), 'w+') as f:
         yaml.dump(OrderedDict((
             ('name', model.name),
             ('compounds', [{'include': 'compounds.yaml'}]),
             ('reactions', [{'include': 'reactions.yaml'}])
-        )), f, default_flow_style=False)
+        )), f, **yaml_args)
