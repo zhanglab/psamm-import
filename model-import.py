@@ -64,7 +64,8 @@ if __name__ == '__main__':
         if len(importers) == 0:
             logger.error('No importers found!')
         else:
-            for name, importer_class in sorted(importers.iteritems()):
+            for name, importer_class in sorted(importers.iteritems(),
+                                               key=lambda x: x[1].title):
                 print('{:<10}  {}'.format(name, importer_class.title))
         sys.exit(0)
 
