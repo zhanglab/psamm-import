@@ -41,8 +41,7 @@ if __name__ == '__main__':
                         help='Source directory or file')
     parser.add_argument('--dest', metavar='path', default='.',
                         help='Destination directory (default is ".")')
-    parser.add_argument('format', default='list', nargs='?',
-                        help='Format to import ("list" to see all)')
+    parser.add_argument('format', help='Format to import ("list" to see all)')
 
     args = parser.parse_args()
 
