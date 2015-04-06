@@ -69,7 +69,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     if args.format not in importers:
-        logger.error('Importer {} not found!')
+        logger.error('Importer {} not found!'.format(args.format))
         logger.info('Use "list" to see available importers.')
         sys.exit(-1)
 
