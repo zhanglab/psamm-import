@@ -120,7 +120,7 @@ class ImportiMA945(Importer):
                 kegg = m.group(2)
 
             name = None if name == '' else name
-
+            name = re.sub(r'\'', '', name)
             try:
                 charge = None if charge == '' else int(charge)
             except ValueError:
