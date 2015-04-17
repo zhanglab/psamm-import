@@ -17,12 +17,70 @@ from metnet.formula import Formula
 from metnet.reaction import Reaction, Compound
 
 
-CompoundEntry = namedtuple('CompoundEntry',
-                           ['id', 'name', 'formula', 'formula_neutral',
-                            'charge', 'kegg', 'cas'])
-ReactionEntry = namedtuple('ReactionEntry',
-                           ['id', 'name', 'genes', 'equation',
-                            'subsystem', 'ec'])
+class _BaseEntry(object):
+    """Base entry in loaded model"""
+
+    def __init__(self, **kwargs):
+        if 'id' not in kwargs:
+            raise ValueError('No id was provided')
+        self._values = kwargs
+        self._id = self._values['id']
+
+    @property
+    def id(self):
+        return self._id
+
+
+class CompoundEntry(_BaseEntry):
+    """Compound entry in loaded model"""
+
+    @property
+    def name(self):
+        return self._values.get('name', None)
+
+    @property
+    def formula(self):
+        return self._values.get('formula', None)
+
+    @property
+    def formula_neutral(self):
+        return self._values.get('formula_neutral', None)
+
+    @property
+    def charge(self):
+        return self._values.get('charge', None)
+
+    @property
+    def kegg(self):
+        return self._values.get('kegg', None)
+
+    @property
+    def cas(self):
+        return self._values.get('cas', None)
+
+
+class ReactionEntry(_BaseEntry):
+    """Reaction entry in loaded model"""
+
+    @property
+    def name(self):
+        return self._values.get('name', None)
+
+    @property
+    def genes(self):
+        return self._values.get('genes', None)
+
+    @property
+    def equation(self):
+        return self._values.get('equation', None)
+
+    @property
+    def subsystem(self):
+        return self._values.get('subsystem', None)
+
+    @property
+    def ec(self):
+        return self._values.get('ec', None)
 
 
 class Importer(object):
@@ -37,7 +95,7 @@ class MetabolicModel(object):
 
         self._genes = set()
         for r in self._reactions.itervalues():
-            if r.genes is not None:
+            if hasattr(r, 'genes') and r.genes is not None:
                 self._genes.update(r.genes)
 
     @property

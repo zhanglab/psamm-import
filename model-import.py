@@ -91,46 +91,40 @@ if __name__ == '__main__':
 
     def model_compounds():
         for compound_id, compound in sorted(model.compounds.iteritems()):
-            d = OrderedDict((key, value)
-                            for key, value in compound._asdict().iteritems()
-                            if value is not None)
-            #d = {key: value for key, value in compound._asdict().iteritems()
-            #     if value is not None}
+            d = OrderedDict()
+            d['id'] = encode_utf8(compound_id)
 
-            d['id'] = encode_utf8(d['id'])
-
-            if 'name' in d:
-                d['name'] = encode_utf8(d['name'])
-            if 'formula' in d:
-                d['formula'] = str(d['formula'])
-            if 'formula_neutral' in d:
-                d['formula_neutral'] = str(d['formula_neutral'])
-            if 'kegg' in d:
-                d['kegg'] = encode_utf8(d['kegg'])
-            if 'cas' in d:
-                d['cas'] = encode_utf8(d['cas'])
+            if hasattr(compound, 'name') and compound.name is not None:
+                d['name'] = encode_utf8(compound.name)
+            if hasattr(compound, 'formula') and compound.formula is not None:
+                d['formula'] = str(compound.formula)
+            if (hasattr(compound, 'formula_neutral') and
+                    compound.formula_neutral is not None):
+                d['formula_neutral'] = str(compound.formula_neutral)
+            if hasattr(compound, 'kegg') and compound.kegg is not None:
+                d['kegg'] = encode_utf8(compound.kegg)
+            if hasattr(compound, 'cas') and compound.cas is not None:
+                d['cas'] = encode_utf8(compound.cas)
 
             yield d
 
     def model_reactions():
         for reaction_id, reaction in sorted(model.reactions.iteritems()):
-            d = OrderedDict((key, value)
-                            for key, value in reaction._asdict().iteritems()
-                            if value is not None)
+            d = OrderedDict()
+            d['id'] = encode_utf8(reaction_id)
 
-            d['id'] = encode_utf8(d['id'])
-
-            if 'name' in d:
-                d['name'] = encode_utf8(d['name'])
-            if 'genes' in d:
-                d['genes'] = [encode_utf8(g) for g in d['genes']]
-            if 'equation' in d:
+            if hasattr(reaction, 'name') and reaction.name is not None:
+                d['name'] = encode_utf8(reaction.name)
+            if hasattr(reaction, 'genes') and reaction.genes is not None:
+                d['genes'] = [encode_utf8(g) for g in reaction.genes]
+            if hasattr(reaction, 'equation') and reaction.equation is not None:
                 d['equation'] = encode_utf8(modelseed.format_reaction(
-                    d['equation']))
-            if 'subsystem' in d:
-                d['subsystem'] = encode_utf8(d['subsystem'])
-            if 'ec' in d:
-                d['ec'] = encode_utf8(d['ec'])
+                    reaction.equation))
+            if (hasattr(reaction, 'subsystem') and
+                    reaction.subsystem is not None):
+                d['subsystem'] = encode_utf8(reaction.subsystem)
+            if hasattr(reaction, 'ec') and reaction.ec is not None:
+                d['ec'] = encode_utf8(reaction.ec)
 
             yield d
 
