@@ -12,7 +12,7 @@ from collections import namedtuple
 import xlrd
 from metnet.datasource.misc import (parse_metnet_reaction,
                                     parse_sudensimple_reaction)
-from metnet.datasource import modelseed
+from metnet.datasource import modelseed, sbml
 from metnet.formula import Formula
 from metnet.reaction import Reaction, Compound
 
@@ -1538,3 +1538,58 @@ class ImportModelSEED(Importer):
             entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
                                   equation=equation, subsystem=None, ec=ec)
             yield reaction_id, entry
+
+
+class ImportSBML(Importer):
+    """Read metabolic model from an SBML file"""
+
+    name = 'sbml'
+    title = 'SBML model'
+
+    def help(self):
+        print('Source must contain the model definition in SBML format.\n'
+              'Expected files in source directory:\n'
+              '- *.sbml')
+
+    def import_model(self, source):
+        if os.path.isdir(source):
+            sources = glob.glob(os.path.join(source, '*.sbml'))
+            if len(sources) == 0:
+                raise ParseError('No .sbml file found in source directory')
+            elif len(sources) > 1:
+                raise ParseError(
+                    'More than one .sbml file found in source directory')
+            source = sources[0]
+
+        with open(source, 'r') as f:
+            reader = sbml.SBMLReader(f, strict=False)
+
+        species = {entry.id: entry for entry in reader.species}
+
+        # Filter out boundary species
+        filtered_reactions = {}
+        for reaction in reader.reactions:
+            entry_values = {key: getattr(reaction, key) for key in
+                            ('id', 'name')}
+            equation = reaction.equation
+
+            left = ((c, v) for c, v in equation.left
+                    if not species[c.name].boundary)
+            right = ((c, v) for c, v in equation.right
+                    if not species[c.name].boundary)
+            entry_values['equation'] = Reaction(
+                equation.direction, left, right)
+            filtered_reactions[reaction.id] = ReactionEntry(**entry_values)
+
+        species = {entry.id: entry for entry in species.itervalues()
+                   if not entry.boundary}
+
+        model = MetabolicModel('SBML', species, filtered_reactions)
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
