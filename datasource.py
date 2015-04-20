@@ -1580,6 +1580,24 @@ class ImportSBML(Importer):
 
         species = {entry.id: entry for entry in reader.species}
 
+        # Try to detect biomass reaction
+        biomass_reaction = None
+        objective_reactions = set()
+        for reaction in reader.reactions:
+            for parameter in reaction.kinetic_law_reaction_parameters:
+                pid, value, units = parameter
+                if pid == 'OBJECTIVE_COEFFICIENT':
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        continue
+                    if value != 0:
+                        objective_reactions.add(reaction.id)
+        if len(objective_reactions) == 1:
+            biomass_reaction = next(iter(objective_reactions))
+            logger.info('Detected biomass reaction: {}'.format(
+                biomass_reaction))
+
         # Filter out boundary species
         filtered_reactions = {}
         for reaction in reader.reactions:
@@ -1606,6 +1624,7 @@ class ImportSBML(Importer):
         logger.info('Filtered {} boundary species'.format(count_species))
 
         model = MetabolicModel('SBML', filtered_species, filtered_reactions)
+        model.biomass_reaction = biomass_reaction
 
         reaction_id, compound_name = model.check_reaction_compounds()
         if compound_name is not None:
