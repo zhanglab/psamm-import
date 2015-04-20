@@ -8,6 +8,7 @@ import glob
 import re
 import csv
 from collections import namedtuple
+import logging
 
 import xlrd
 from metnet.datasource.misc import (parse_metnet_reaction,
@@ -15,6 +16,8 @@ from metnet.datasource.misc import (parse_metnet_reaction,
 from metnet.datasource import modelseed, sbml
 from metnet.formula import Formula
 from metnet.reaction import Reaction, Compound
+
+logger = logging.getLogger(__name__)
 
 
 class _BaseEntry(object):
@@ -1581,10 +1584,17 @@ class ImportSBML(Importer):
                 equation.direction, left, right)
             filtered_reactions[reaction.id] = ReactionEntry(**entry_values)
 
-        species = {entry.id: entry for entry in species.itervalues()
-                   if not entry.boundary}
+        filtered_species = {}
+        count_species = 0
+        for entry in species.itervalues():
+            if not entry.boundary:
+                filtered_species[entry.id] = entry
+            else:
+                count_species += 1
 
-        model = MetabolicModel('SBML', species, filtered_reactions)
+        logger.info('Filtered {} boundary species'.format(count_species))
+
+        model = MetabolicModel('SBML', filtered_species, filtered_reactions)
 
         reaction_id, compound_name = model.check_reaction_compounds()
         if compound_name is not None:
