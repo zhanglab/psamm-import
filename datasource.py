@@ -1419,6 +1419,184 @@ class ImportiNJ661v(ImportGenericiNJ661mv):
         return self.import_model_named('iNJ661v', source)
 
 
+class ImportShewanellaOng(Importer):
+    """Generic importer for four models published in Ong et al., 2014
+
+    Generic importer for the models iMR1_799, iMR4_812, iW3181_789 and
+    iOS217_672 from Ong et al. 2014. "Comparisons of Shewanella Strains Based
+    on Genome Annotations, Modeling, and Experiments." BMC Systems Biology 8
+    (1). BMC Systems Biology: 1-11. doi:10.1186/1752-0509-8-31.
+    """
+
+    filename = '1752-0509-8-31-s2.xlsx'
+    biomass_names = (
+        'SO_BIOMASSMACRO_DM_NOATP2',
+        'MR4_BIOMASSMACRO_DM_NOATP2',
+        'W3181_BIOMASSMACRO_DM_NOATP2',
+        'Sden_BIOMASSMACRO_DM_NOATP2',
+        'Core_BIOMASSMACRO_DM_NOATP2'
+    )
+
+    def help(self):
+        print('Source must contain the model definition in Excel format.\n'
+              'Expected files in source directory:\n'
+              '- {}'.format(self.filename))
+
+    def import_model_named(self, name, col_index, source):
+        if os.path.isdir(source):
+            source = os.path.join(source, self.filename)
+
+        self._book = xlrd.open_workbook(source)
+        self._col_index = col_index
+
+        model = MetabolicModel(
+            name, self._read_compounds(), self._read_reactions())
+        model.biomass_reaction = self.biomass_names[col_index]
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
+
+    def _read_compounds(self):
+        sheet = self._book.sheet_by_name('S3-Metabolites')
+        for i in range(1, sheet.nrows):
+            (compound_id, _, _, _, _, _, name, formula_neutral, formula,
+                charge, _, kegg, cas) = sheet.row_values(i, end_colx=13)
+
+            # Remove compartmentalization of compounds
+            compound_id = re.match(r'^(.*)\[.\]$', compound_id).group(1)
+            name = name if name.strip() != '' else None
+
+            if formula_neutral.strip() != '':
+                formula_neutral = Formula.parse(formula_neutral)
+                formula = formula_neutral
+            else:
+                formula_neutral = None
+                if formula.strip() != '':
+                    formula = Formula.parse(formula)
+                else:
+                    formula = None
+
+            try:
+                charge = None if charge == '' else int(charge)
+            except ValueError:
+                charge = None
+
+            kegg = None if kegg.strip() == '' else kegg
+
+            if isinstance(cas, basestring) and cas.strip() in ('', 'None'):
+                cas = None
+            else:
+                cas = str(cas)
+
+            entry = CompoundEntry(id=compound_id, name=name,
+                                  formula=formula,
+                                  formula_neutral=formula_neutral,
+                                  charge=charge, kegg=kegg, cas=cas)
+            yield compound_id, entry
+
+    def _read_reactions(self):
+        sheet = self._book.sheet_by_name('S2-Reactions')
+        for i in range(2, sheet.nrows):
+            reaction_id, _, _, _, _, _, name, equation = sheet.row_values(
+                i, end_colx=8)
+
+            if reaction_id.strip() == '':
+                continue
+
+            # Whether the reaction is present in this model
+            model_presence = bool(sheet.row_values(
+                i, start_colx=1, end_colx=6)[self._col_index])
+
+            if not model_presence:
+                # TODO load the complete reaction list and use the model subset
+                # feature of the native format to restrict the model.
+                continue
+
+            # Genes
+            model_genes = sheet.row_values(
+                i, start_colx=13, end_colx=18)[self._col_index].strip()
+
+            # Fixup compound names in reactions
+            def translate(s):
+                s = s.lower()
+                m = re.match(r'^(.*)_e$', s)
+                if m:
+                    s = m.group(1)
+
+                if s == 'aaacoa':
+                    s = 'aacoa'
+
+                if s in ('fdxr-4:2', 'fdxo-4:2'):
+                    s = s.replace(':', '_')
+
+                if s in ('q8', 'q8h2'):
+                    s = 'ub' + s
+                return s
+
+            # Reaction equation
+            if equation.strip() != '':
+                equation = parse_metnet_reaction(equation)
+                equation = equation.translated_compounds(translate)
+            else:
+                equation = None
+
+            if model_genes != '':
+                genes = frozenset(model_genes.split())
+            else:
+                genes = None
+
+            subsystem = sheet.cell_value(i, 18)
+
+            name = None if name.strip() == '' else name.strip()
+            subsystem = None if subsystem.strip() == '' else subsystem
+
+            entry = ReactionEntry(id=reaction_id, name=name,
+                                  genes=genes, equation=equation,
+                                  subsystem=subsystem)
+            yield reaction_id, entry
+
+
+class ImportiMR1_799(ImportShewanellaOng):
+    name = 'imr1_799'
+    title = ('Shewanella oneidensis MR-1 iMR1_799 (Excel format),'
+        ' Ong et al., 2014')
+
+    def import_model(self, source):
+        return self.import_model_named('iMR1_799', 0, source)
+
+
+class ImportiMR4_812(ImportShewanellaOng):
+    name = 'imr4_812'
+    title = ('Shewanella sp. MR-4 iMR4_812 (Excel format),'
+        ' Ong et al., 2014')
+
+    def import_model(self, source):
+        return self.import_model_named('iMR4_812', 1, source)
+
+
+class ImportiW3181_789(ImportShewanellaOng):
+    name = 'iw3181_789'
+    title = ('Shewanella sp. W3-18-1 iW3181_789 (Excel format),'
+        ' Ong et al., 2014')
+
+    def import_model(self, source):
+        return self.import_model_named('iW3181_789', 2, source)
+
+
+class ImportiOS217_672(ImportShewanellaOng):
+    name = 'ios217_672'
+    title = ('Shewanella denitrificans OS217 iOS217_672 (Excel format),'
+        ' Ong et al., 2014')
+
+    def import_model(self, source):
+        return self.import_model_named('iOS217_672', 3, source)
+
+
 class ImportModelSEED(Importer):
     """Read metabolic model for a ModelSEED model"""
 
