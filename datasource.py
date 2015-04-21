@@ -1623,7 +1623,14 @@ class ImportSBML(Importer):
 
         logger.info('Filtered {} boundary species'.format(count_species))
 
-        model = MetabolicModel('SBML', filtered_species, filtered_reactions)
+        model_name = 'SBML'
+        if reader.name is not None:
+            model_name = reader.name
+        elif reader.id is not None:
+            model_name = reader.id
+
+        model = MetabolicModel(
+            model_name, filtered_species, filtered_reactions)
         model.biomass_reaction = biomass_reaction
 
         reaction_id, compound_name = model.check_reaction_compounds()
