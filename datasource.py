@@ -117,9 +117,20 @@ class MetabolicModel(object):
     def genes(self):
         return self._genes
 
+    @property
+    def biomass_reaction(self):
+        return self._biomass_reaction
+
+    @biomass_reaction.setter
+    def biomass_reaction(self, value):
+        if value is not None and value not in self._reactions:
+            raise ValueError('Invalid reaction')
+        self._biomass_reaction = value
+
     def print_summary(self):
         """Print model summary"""
         print('Model: {}'.format(self.name))
+        print('- Biomass reaction: {}'.format(self.biomass_reaction))
         print('- Compounds: {}'.format(len(self.compounds)))
         print('- Reactions: {}'.format(len(self.reactions)))
         print('- Genes: {}'.format(len(self.genes)))
