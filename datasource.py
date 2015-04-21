@@ -95,6 +95,7 @@ class MetabolicModel(object):
         self._name = name
         self._compounds = dict(compounds)
         self._reactions = dict(reactions)
+        self._biomass_reaction = None
 
         self._genes = set()
         for r in self._reactions.itervalues():
