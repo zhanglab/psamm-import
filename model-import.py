@@ -150,9 +150,13 @@ if __name__ == '__main__':
     with open(os.path.join(dest, 'reactions.yaml'), 'w+') as f:
         yaml.dump(list(model_reactions()), f, **yaml_args)
 
+    model_d = OrderedDict([('name', model.name)])
+    if model.biomass_reaction is not None:
+        model_d['biomass'] = model.biomass_reaction
+    model_d.update([
+        ('compounds', [{'include': 'compounds.yaml'}]),
+        ('reactions', [{'include': 'reactions.yaml'}])
+    ])
+
     with open(os.path.join(dest, 'model.yaml'), 'w+') as f:
-        yaml.dump(OrderedDict((
-            ('name', model.name),
-            ('compounds', [{'include': 'compounds.yaml'}]),
-            ('reactions', [{'include': 'reactions.yaml'}])
-        )), f, **yaml_args)
+        yaml.dump(model_d, f, **yaml_args)
