@@ -1764,8 +1764,9 @@ class ImportSBML(Importer):
         objective_reactions = set()
         for reaction in reader.reactions:
             for parameter in reaction.kinetic_law_reaction_parameters:
-                pid, value, units = parameter
-                if pid == 'OBJECTIVE_COEFFICIENT':
+                pid, name, value, units = parameter
+                if (pid == 'OBJECTIVE_COEFFICIENT' or
+                        name == 'OBJECTIVE_COEFFICIENT'):
                     try:
                         value = float(value)
                     except ValueError:
