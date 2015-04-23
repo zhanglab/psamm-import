@@ -1733,18 +1733,16 @@ class ImportModelSEED(Importer):
             yield reaction_id, entry
 
 
-class ImportSBML(Importer):
-    """Read metabolic model from an SBML file"""
-
-    name = 'sbml'
-    title = 'SBML model'
+class SBMLImporter(Importer):
+    """Base importer for reading metabolic model from an SBML file"""
 
     def help(self):
         print('Source must contain the model definition in SBML format.\n'
               'Expected files in source directory:\n'
               '- *.sbml')
 
-    def import_model(self, source):
+    def _resolve_source(self, source):
+        """Resolve source to filepath if it is a directory"""
         if os.path.isdir(source):
             sources = glob.glob(os.path.join(source, '*.sbml'))
             if len(sources) == 0:
@@ -1752,17 +1750,71 @@ class ImportSBML(Importer):
             elif len(sources) > 1:
                 raise ParseError(
                     'More than one .sbml file found in source directory')
-            source = sources[0]
+            return sources[0]
+        return source
 
+    def _get_reader(self, f):
+        raise NotImplementedError('Subclasses must implement _open_reader()')
+
+    def import_model(self, source):
+        source = self._resolve_source(source)
         with open(source, 'r') as f:
-            reader = sbml.SBMLReader(f, strict=False)
+            self._reader = self._open_reader(f)
 
-        species = {entry.id: entry for entry in reader.species}
+        model_name = 'SBML'
+        if self._reader.name is not None:
+            model_name = self._reader.name
+        elif self._reader.id is not None:
+            model_name = self._reader.id
 
-        # Try to detect biomass reaction
+        model = MetabolicModel(
+            model_name, ((s.id, s) for s in self._reader.species),
+            ((r.id, r) for r in self._reader.reactions))
+
+        reaction_id, compound_name = model.check_reaction_compounds()
+        if compound_name is not None:
+            raise ParseError(
+                'Compound {}, {} not defined in compound table'.format(
+                    reaction_id, compound_name))
+
+        return model
+
+
+class SBMLStrictImporter(SBMLImporter):
+    """Read metabolic model from an SBML file using strict parser"""
+
+    name = 'sbml-strict'
+    title = 'SBML model (strict)'
+
+    def _open_reader(self, f):
+        return sbml.SBMLReader(f, strict=True, ignore_boundary=True)
+
+
+class SBMLNonstrictImporter(SBMLImporter):
+    """Read metabolic model from an SBML file using non-strict parser"""
+
+    name = 'sbml'
+    title = 'SBML model (non-strict)'
+
+    def _open_reader(self, f):
+        return sbml.SBMLReader(f, strict=False, ignore_boundary=True)
+
+    def import_model(self, source):
+        model = super(SBMLNonstrictImporter, self).import_model(source)
+
         biomass_reaction = None
         objective_reactions = set()
-        for reaction in reader.reactions:
+        for reaction in self._reader.reactions:
+            # Check whether species multiple times
+            compounds = set()
+            for c, v in reaction.equation.left:
+                if c.name in compounds:
+                    logger.warning(
+                        'Compound {} appears multiple times in the same'
+                        ' reaction: {}'.format(c.name, reaction.id))
+                compounds.add(c.name)
+
+            # Try to detect biomass reaction and ambiguous flux bounds
             upper_bound = None
             lower_bound = None
             for parameter in reaction.kinetic_law_reaction_parameters:
@@ -1801,55 +1853,6 @@ class ImportSBML(Importer):
             logger.info('Detected biomass reaction: {}'.format(
                 biomass_reaction))
 
-        # Filter out boundary species
-        filtered_reactions = {}
-        for reaction in reader.reactions:
-            entry_values = {key: getattr(reaction, key) for key in
-                            ('id', 'name')}
-            equation = reaction.equation
-
-            left = ((c, v) for c, v in equation.left
-                    if not species[c.name].boundary)
-            right = ((c, v) for c, v in equation.right
-                    if not species[c.name].boundary)
-            entry_values['equation'] = Reaction(
-                equation.direction, left, right)
-            filtered_reactions[reaction.id] = ReactionEntry(**entry_values)
-
-        # Check whether species occur on both sides
-        for reaction in filtered_reactions.itervalues():
-            left = set(c.name for c, v in reaction.equation.left)
-            right = set(c.name for c, v in reaction.equation.right)
-            common = left & right
-            if len(common) > 0:
-                logger.warning(
-                    'In reaction {} the same compound appears on both sides'
-                    ' ({})'.format(reaction.id, ', '.join(common)))
-
-        filtered_species = {}
-        count_species = 0
-        for entry in species.itervalues():
-            if not entry.boundary:
-                filtered_species[entry.id] = entry
-            else:
-                count_species += 1
-
-        logger.info('Filtered {} boundary species'.format(count_species))
-
-        model_name = 'SBML'
-        if reader.name is not None:
-            model_name = reader.name
-        elif reader.id is not None:
-            model_name = reader.id
-
-        model = MetabolicModel(
-            model_name, filtered_species, filtered_reactions)
         model.biomass_reaction = biomass_reaction
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
