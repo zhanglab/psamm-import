@@ -1763,6 +1763,8 @@ class ImportSBML(Importer):
         biomass_reaction = None
         objective_reactions = set()
         for reaction in reader.reactions:
+            upper_bound = None
+            lower_bound = None
             for parameter in reaction.kinetic_law_reaction_parameters:
                 pid, name, value, units = parameter
                 if (pid == 'OBJECTIVE_COEFFICIENT' or
@@ -1773,6 +1775,27 @@ class ImportSBML(Importer):
                         continue
                     if value != 0:
                         objective_reactions.add(reaction.id)
+                elif pid == 'UPPER_BOUND' or name == 'UPPER_BOUND':
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        continue
+                    upper_bound = value
+                elif pid == 'LOWER_BOUND' or name == 'LOWER_BOUND':
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        continue
+                    lower_bound = value
+
+            if upper_bound is not None and upper_bound <= 0:
+                logger.warning('Upper bound of {} is {}'.format(
+                    reaction.id, upper_bound))
+            if (lower_bound is not None and
+                    lower_bound < 0 and not reaction.reversible):
+                logger.warning('Lower bound of irreversible reaction {} is'
+                               ' {}'.format(reaction.id, lower_bound))
+
         if len(objective_reactions) == 1:
             biomass_reaction = next(iter(objective_reactions))
             logger.info('Detected biomass reaction: {}'.format(
