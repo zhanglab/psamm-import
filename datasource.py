@@ -1816,6 +1816,16 @@ class ImportSBML(Importer):
                 equation.direction, left, right)
             filtered_reactions[reaction.id] = ReactionEntry(**entry_values)
 
+        # Check whether species occur on both sides
+        for reaction in filtered_reactions.itervalues():
+            left = set(c.name for c, v in reaction.equation.left)
+            right = set(c.name for c, v in reaction.equation.right)
+            common = left & right
+            if len(common) > 0:
+                logger.warning(
+                    'In reaction {} the same compound appears on both sides'
+                    ' ({})'.format(reaction.id, ', '.join(common)))
+
         filtered_species = {}
         count_species = 0
         for entry in species.itervalues():
