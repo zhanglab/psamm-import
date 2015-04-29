@@ -33,6 +33,10 @@ class _BaseEntry(object):
     def id(self):
         return self._id
 
+    @property
+    def properties(self):
+        return dict(self._values)
+
 
 class CompoundEntry(_BaseEntry):
     """Compound entry in loaded model"""

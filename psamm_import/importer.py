@@ -48,21 +48,32 @@ def model_compounds(model):
         d = OrderedDict()
         d['id'] = encode_utf8(compound_id)
 
-        if hasattr(compound, 'name') and compound.name is not None:
-            d['name'] = encode_utf8(compound.name)
-        if hasattr(compound, 'formula') and compound.formula is not None:
-            d['formula'] = str(compound.formula)
-        if (hasattr(compound, 'formula_neutral') and
-                compound.formula_neutral is not None):
-            d['formula_neutral'] = str(compound.formula_neutral)
-        if hasattr(compound, 'charge') and compound.charge is not None:
-            d['charge'] = int(compound.charge)
-        if hasattr(compound, 'kegg') and compound.kegg is not None:
-            d['kegg'] = encode_utf8(compound.kegg)
-        if hasattr(compound, 'cas') and compound.cas is not None:
-            d['cas'] = encode_utf8(compound.cas)
+        name = compound.properties.get('name')
+        if name is not None:
+            d['name'] = encode_utf8(name)
+
+        formula = compound.properties.get('formula')
+        if formula is not None:
+            d['formula'] = str(formula)
+
+        formula_neutral = compound.properties.get('formula_neutral')
+        if formula_neutral is not None:
+            d['formula_neutral'] = str(formula_neutral)
+
+        charge = compound.properties.get('charge')
+        if charge is not None:
+            d['charge'] = int(charge)
+
+        kegg = compound.properties.get('kegg')
+        if kegg is not None:
+            d['kegg'] = encode_utf8(kegg)
+
+        cas = compound.properties.get('cas')
+        if cas is not None:
+            d['cas'] = encode_utf8(cas)
 
         yield d
+
 
 def model_reactions(model):
     """Yield model reactions as YAML dicts"""
