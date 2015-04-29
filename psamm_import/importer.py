@@ -35,6 +35,56 @@ def recursive_subclasses(cls):
         yield subclass
 
 
+def encode_utf8(s):
+    if isinstance(s, unicode):
+        return s.encode('utf-8')
+    return s
+
+
+def model_compounds(model):
+    """Yield model compounds as YAML dicts"""
+
+    for compound_id, compound in sorted(model.compounds.iteritems()):
+        d = OrderedDict()
+        d['id'] = encode_utf8(compound_id)
+
+        if hasattr(compound, 'name') and compound.name is not None:
+            d['name'] = encode_utf8(compound.name)
+        if hasattr(compound, 'formula') and compound.formula is not None:
+            d['formula'] = str(compound.formula)
+        if (hasattr(compound, 'formula_neutral') and
+                compound.formula_neutral is not None):
+            d['formula_neutral'] = str(compound.formula_neutral)
+        if hasattr(compound, 'kegg') and compound.kegg is not None:
+            d['kegg'] = encode_utf8(compound.kegg)
+        if hasattr(compound, 'cas') and compound.cas is not None:
+            d['cas'] = encode_utf8(compound.cas)
+
+        yield d
+
+def model_reactions(model):
+    """Yield model reactions as YAML dicts"""
+
+    for reaction_id, reaction in sorted(model.reactions.iteritems()):
+        d = OrderedDict()
+        d['id'] = encode_utf8(reaction_id)
+
+        if hasattr(reaction, 'name') and reaction.name is not None:
+            d['name'] = encode_utf8(reaction.name)
+        if hasattr(reaction, 'genes') and reaction.genes is not None:
+            d['genes'] = [encode_utf8(g) for g in reaction.genes]
+        if hasattr(reaction, 'equation') and reaction.equation is not None:
+            d['equation'] = encode_utf8(modelseed.format_reaction(
+                reaction.equation))
+        if (hasattr(reaction, 'subsystem') and
+                reaction.subsystem is not None):
+            d['subsystem'] = encode_utf8(reaction.subsystem)
+        if hasattr(reaction, 'ec') and reaction.ec is not None:
+            d['ec'] = encode_utf8(reaction.ec)
+
+        yield d
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Import from external model formats')
@@ -85,50 +135,6 @@ def main():
 
     model.print_summary()
 
-    def encode_utf8(s):
-        if isinstance(s, unicode):
-            return s.encode('utf-8')
-        return s
-
-    def model_compounds():
-        for compound_id, compound in sorted(model.compounds.iteritems()):
-            d = OrderedDict()
-            d['id'] = encode_utf8(compound_id)
-
-            if hasattr(compound, 'name') and compound.name is not None:
-                d['name'] = encode_utf8(compound.name)
-            if hasattr(compound, 'formula') and compound.formula is not None:
-                d['formula'] = str(compound.formula)
-            if (hasattr(compound, 'formula_neutral') and
-                    compound.formula_neutral is not None):
-                d['formula_neutral'] = str(compound.formula_neutral)
-            if hasattr(compound, 'kegg') and compound.kegg is not None:
-                d['kegg'] = encode_utf8(compound.kegg)
-            if hasattr(compound, 'cas') and compound.cas is not None:
-                d['cas'] = encode_utf8(compound.cas)
-
-            yield d
-
-    def model_reactions():
-        for reaction_id, reaction in sorted(model.reactions.iteritems()):
-            d = OrderedDict()
-            d['id'] = encode_utf8(reaction_id)
-
-            if hasattr(reaction, 'name') and reaction.name is not None:
-                d['name'] = encode_utf8(reaction.name)
-            if hasattr(reaction, 'genes') and reaction.genes is not None:
-                d['genes'] = [encode_utf8(g) for g in reaction.genes]
-            if hasattr(reaction, 'equation') and reaction.equation is not None:
-                d['equation'] = encode_utf8(modelseed.format_reaction(
-                    reaction.equation))
-            if (hasattr(reaction, 'subsystem') and
-                    reaction.subsystem is not None):
-                d['subsystem'] = encode_utf8(reaction.subsystem)
-            if hasattr(reaction, 'ec') and reaction.ec is not None:
-                d['ec'] = encode_utf8(reaction.ec)
-
-            yield d
-
     # Create destination directory if not exists
     dest = args.dest
     try:
@@ -146,10 +152,10 @@ def main():
                  'allow_unicode': True}
 
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
-        yaml.dump(list(model_compounds()), f, **yaml_args)
+        yaml.dump(list(model_compounds(model)), f, **yaml_args)
 
     with open(os.path.join(dest, 'reactions.yaml'), 'w+') as f:
-        yaml.dump(list(model_reactions()), f, **yaml_args)
+        yaml.dump(list(model_reactions(model)), f, **yaml_args)
 
     model_d = OrderedDict([('name', model.name)])
     if model.biomass_reaction is not None:
