@@ -55,6 +55,8 @@ def model_compounds(model):
         if (hasattr(compound, 'formula_neutral') and
                 compound.formula_neutral is not None):
             d['formula_neutral'] = str(compound.formula_neutral)
+        if hasattr(compound, 'charge') and compound.charge is not None:
+            d['charge'] = int(compound.charge)
         if hasattr(compound, 'kegg') and compound.kegg is not None:
             d['kegg'] = encode_utf8(compound.kegg)
         if hasattr(compound, 'cas') and compound.cas is not None:
