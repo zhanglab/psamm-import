@@ -97,8 +97,8 @@ class Importer(object):
 class MetabolicModel(object):
     def __init__(self, name, compounds, reactions):
         self._name = name
-        self._compounds = dict(compounds)
-        self._reactions = dict(reactions)
+        self._compounds = dict((c.id, c) for c in compounds)
+        self._reactions = dict((r.id, r) for r in reactions)
         self._biomass_reaction = None
 
         self._genes = set()
@@ -218,11 +218,10 @@ class ImportiMA945(Importer):
 
             kegg = None if kegg == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('reactions')
@@ -263,9 +262,8 @@ class ImportiMA945(Importer):
             else:
                 genes = None
 
-            yield reaction_id, ReactionEntry(id=reaction_id, name=name,
-                                             genes=genes, equation=equation,
-                                             subsystem=None, ec=None)
+            yield ReactionEntry(id=reaction_id, name=name,
+                                genes=genes, equation=equation)
 
 
 class ImportiRR1083(Importer):
@@ -320,11 +318,10 @@ class ImportiRR1083(Importer):
 
             kegg = None if kegg == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula_neutral,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula_neutral,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Gene Protein Reaction iRR1083')
@@ -351,9 +348,8 @@ class ImportiRR1083(Importer):
 
             subsystem = None if subsystem == '' else subsystem
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=None, ec=None)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation)
 
 
 class ImportiJO1366(Importer):
@@ -414,11 +410,10 @@ class ImportiJO1366(Importer):
             kegg = None if kegg.strip() == '' else kegg
             cas = None if cas.strip() == '' else cas
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Table 2')
@@ -445,10 +440,9 @@ class ImportiJO1366(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=subsystem,
-                                  ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem,
+                                ec=ec)
 
 
 class EColiTextbookImport(Importer):
@@ -514,11 +508,10 @@ class EColiTextbookImport(Importer):
             cas = None if cas.strip() == '' or cas == 'None' else cas
             kegg = None if kegg.strip() == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('reactions')
@@ -545,10 +538,8 @@ class EColiTextbookImport(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=subsystem,
-                                  ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem, ec=ec)
 
 
 class ImportSTMv1_0(Importer):
@@ -602,11 +593,8 @@ class ImportSTMv1_0(Importer):
 
             kegg = None if kegg.strip() == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=None,
-                                  charge=charge, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula, charge=charge, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('SI Tables - S2a - Reactions')
@@ -633,10 +621,9 @@ class ImportSTMv1_0(Importer):
             else:
                 genes = None
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=None)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name,
+                                genes=genes, equation=equation,
+                                subsystem=subsystem)
 
 
 class ImportiJN746(Importer):
@@ -706,11 +693,9 @@ class ImportiJN746(Importer):
             else:
                 cas = str(cas)
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._reaction_book.sheet_by_name('Additional file 9')
@@ -737,11 +722,9 @@ class ImportiJN746(Importer):
             else:
                 genes = None
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=ec)
-            yield reaction_id, entry
-
+            yield ReactionEntry(id=reaction_id, name=name,
+                                genes=genes, equation=equation,
+                                subsystem=subsystem, ec=ec)
 
 
 class ImportiJP815(Importer):
@@ -789,11 +772,7 @@ class ImportiJP815(Importer):
             if m:
                 name = m.group(1)
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=None,
-                                  formula_neutral=None,
-                                  charge=None, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Reactions')
@@ -828,10 +807,8 @@ class ImportiJP815(Importer):
             else:
                 genes = None
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=None)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem)
 
 
 class ImportiSyn731(Importer):
@@ -904,11 +881,8 @@ class ImportiSyn731(Importer):
             else:
                 kegg = None
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=None,
-                                  charge=charge, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                charge=charge, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Model')
@@ -943,10 +917,8 @@ class ImportiSyn731(Importer):
 
             ec = ec if ec.strip() != '' and ec != 'Undetermined' else None
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=subsystem,
-                                  ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem, ec=ec)
 
 
 class ImportiCce806(Importer):
@@ -1027,11 +999,9 @@ class ImportiCce806(Importer):
             else:
                 cas = None
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                formula_neutral=formula, charge=charge,
+                                kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._reaction_book.sheet_by_name('S1 - Reactions')
@@ -1084,9 +1054,8 @@ class ImportiCce806(Importer):
             else:
                 ec = None
 
-            yield reaction_id, ReactionEntry(id=reaction_id, name=name,
-                                             genes=genes, equation=equation,
-                                             subsystem=subsystem, ec=ec)
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem, ec=ec)
 
 
 class ImportGSMN_TB(Importer):
@@ -1158,18 +1127,12 @@ class ImportGSMN_TB(Importer):
            # cas = None if cas.strip() == '' or cas == 'None' else cas
            # kegg = None if kegg.strip() == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=None,
-                                  formula_neutral=None,
-                                  charge=None, kegg=None, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name)
 
         def create_missing(compound_id, name=None):
             if name is None:
                 name = compound_id
-            return compound_id, CompoundEntry(
-                id=compound_id, name=name, formula=None, formula_neutral=None,
-                charge=None, kegg=None, cas=None)
+            return CompoundEntry(id=compound_id, name=name)
 
         # Generate missing compounds
         yield create_missing('MBT-HOLO', 'Mycobactin-Holo')
@@ -1228,10 +1191,8 @@ class ImportGSMN_TB(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=subsystem,
-                                  ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem, ec=ec)
 
 
 class ImportiNJ661(Importer):
@@ -1284,11 +1245,8 @@ class ImportiNJ661(Importer):
             except ValueError:
                 charge = None
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=None,
-                                  charge=charge, kegg=None, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                charge=charge)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('iNJ661')
@@ -1313,10 +1271,9 @@ class ImportiNJ661(Importer):
                 equation = None
 
             subsystem = None if subsystem.strip() == '' else subsystem
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=None)
-            yield reaction_id, entry
+
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem)
 
 
 class ImportGenericiNJ661mv(Importer):
@@ -1362,11 +1319,7 @@ class ImportGenericiNJ661mv(Importer):
             else:
                 formula = None
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=None,
-                                  charge=None, kegg=None, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('reactions')
@@ -1397,10 +1350,8 @@ class ImportGenericiNJ661mv(Importer):
 
             subsystem = None if subsystem.strip() == '' else subsystem
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=None)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem)
 
 
 class ImportiNJ661m(ImportGenericiNJ661mv):
@@ -1497,11 +1448,9 @@ class ImportShewanellaOng(Importer):
             else:
                 cas = str(cas)
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                formula_neutral=formula_neutral, charge=charge,
+                                kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('S2-Reactions')
@@ -1559,10 +1508,8 @@ class ImportShewanellaOng(Importer):
             name = None if name.strip() == '' else name.strip()
             subsystem = None if subsystem.strip() == '' else subsystem
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem)
 
 
 class ImportiMR1_799(ImportShewanellaOng):
@@ -1692,10 +1639,8 @@ class ImportModelSEED(Importer):
             else:
                 formula = None
 
-            entry = CompoundEntry(id=compound_id, name=name, formula=formula,
-                                  formula_neutral=None, charge=charge,
-                                  kegg=None, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                charge=charge)
 
     def _read_reactions(self, peg_mapping):
         sheet = self._book.sheet_by_name('Reactions')
@@ -1732,9 +1677,8 @@ class ImportModelSEED(Importer):
                 ec_list = frozenset([ec_list])
                 ec = next(iter(ec_list))
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=None, ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, ec=ec)
 
 
 class SBMLImporter(Importer):
@@ -1758,7 +1702,7 @@ class SBMLImporter(Importer):
         return source
 
     def _get_reader(self, f):
-        raise NotImplementedError('Subclasses must implement _open_reader()')
+        raise NotImplementedError('Subclasses must implement _get_reader()')
 
     def import_model(self, source):
         source = self._resolve_source(source)
@@ -1772,8 +1716,7 @@ class SBMLImporter(Importer):
             model_name = self._reader.id
 
         model = MetabolicModel(
-            model_name, ((s.id, s) for s in self._reader.species),
-            ((r.id, r) for r in self._reader.reactions))
+            model_name, self._reader.species, self._reader.reactions)
 
         reaction_id, compound_name = model.check_reaction_compounds()
         if compound_name is not None:
@@ -1889,7 +1832,7 @@ class SBMLNonstrictImporter(SBMLImporter):
                     if m:
                         properties['chebi_id'] = m.group(1)
 
-            yield compound.id, CompoundEntry(**properties)
+            yield CompoundEntry(**properties)
 
     def _convert_reactions(self, reactions):
         """Convert SBML reaction entries to reactions"""
@@ -1907,4 +1850,4 @@ class SBMLNonstrictImporter(SBMLImporter):
                     if m:
                         properties['gene_association'] = m.group(1)
 
-            yield reaction.id, ReactionEntry(**properties)
+            yield ReactionEntry(**properties)
