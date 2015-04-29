@@ -11,7 +11,7 @@ from collections import OrderedDict
 import yaml
 from psamm.datasource import modelseed
 
-from datasource import Importer
+from .datasource import Importer
 
 logger = logging.getLogger(__name__)
 

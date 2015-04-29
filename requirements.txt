@@ -1,3 +1,0 @@
-xlrd
-PyYAML
-git+ssh://git@zhanglab.uri.edu/psamm.git
