@@ -11,11 +11,11 @@ from collections import namedtuple
 import logging
 
 import xlrd
-from metnet.datasource.misc import (parse_metnet_reaction,
-                                    parse_sudensimple_reaction)
-from metnet.datasource import modelseed, sbml
-from metnet.formula import Formula
-from metnet.reaction import Reaction, Compound
+from psamm.datasource.misc import (parse_metnet_reaction,
+                                   parse_sudensimple_reaction)
+from psamm.datasource import modelseed, sbml
+from psamm.formula import Formula
+from psamm.reaction import Reaction, Compound
 
 logger = logging.getLogger(__name__)
 

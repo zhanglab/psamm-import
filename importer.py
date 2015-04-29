@@ -9,7 +9,7 @@ import logging
 from collections import OrderedDict
 
 import yaml
-from metnet.datasource import modelseed
+from psamm.datasource import modelseed
 
 from datasource import Importer
 
