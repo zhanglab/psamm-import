@@ -1857,6 +1857,54 @@ class SBMLNonstrictImporter(SBMLImporter):
             logger.info('Detected biomass reaction: {}'.format(
                 biomass_reaction))
 
+        model = MetabolicModel(
+            model.name,
+            self._convert_compounds(model.compounds.itervalues()),
+            self._convert_reactions(model.reactions.itervalues()))
         model.biomass_reaction = biomass_reaction
 
         return model
+
+    def _convert_compounds(self, compounds):
+        """Convert SBML species entries to compounds"""
+        for compound in compounds:
+            properties = compound.properties
+
+            # Extract information from notes
+            if compound.xml_notes is not None:
+                for note in compound.xml_notes.itertext():
+                    m = re.match(r'FORMULA: (.+)$', note)
+                    if m:
+                        properties['formula'] = m.group(1)
+
+                    m = re.match(r'KEGG ID: (.+)$', note)
+                    if m:
+                        properties['kegg'] = m.group(1)
+
+                    m = re.match(r'PubChem ID: (.+)$', note)
+                    if m:
+                        properties['pubchem_id'] = m.group(1)
+
+                    m = re.match(r'ChEBI ID: (.+)$', note)
+                    if m:
+                        properties['chebi_id'] = m.group(1)
+
+            yield compound.id, CompoundEntry(**properties)
+
+    def _convert_reactions(self, reactions):
+        """Convert SBML reaction entries to reactions"""
+        for reaction in reactions:
+            properties = reaction.properties
+
+            # Extract information from notes
+            if reaction.xml_notes is not None:
+                for note in reaction.xml_notes.itertext():
+                    m = re.match(r'SUBSYSTEM: (.+)$', note)
+                    if m:
+                        properties['subsystem'] = m.group(1)
+
+                    m = re.match(r'GENE_ASSOCIATION: (.+)$', note)
+                    if m:
+                        properties['gene_association'] = m.group(1)
+
+            yield reaction.id, ReactionEntry(**properties)
