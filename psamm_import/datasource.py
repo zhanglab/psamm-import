@@ -11,11 +11,11 @@ from collections import namedtuple
 import logging
 
 import xlrd
-from metnet.datasource.misc import (parse_metnet_reaction,
-                                    parse_sudensimple_reaction)
-from metnet.datasource import modelseed, sbml
-from metnet.formula import Formula
-from metnet.reaction import Reaction, Compound
+from psamm.datasource.misc import (parse_metnet_reaction,
+                                   parse_sudensimple_reaction)
+from psamm.datasource import modelseed, sbml
+from psamm.formula import Formula
+from psamm.reaction import Reaction, Compound
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,10 @@ class _BaseEntry(object):
     @property
     def id(self):
         return self._id
+
+    @property
+    def properties(self):
+        return dict(self._values)
 
 
 class CompoundEntry(_BaseEntry):
@@ -93,14 +97,16 @@ class Importer(object):
 class MetabolicModel(object):
     def __init__(self, name, compounds, reactions):
         self._name = name
-        self._compounds = dict(compounds)
-        self._reactions = dict(reactions)
+        self._compounds = dict((c.id, c) for c in compounds)
+        self._reactions = dict((r.id, r) for r in reactions)
         self._biomass_reaction = None
 
         self._genes = set()
         for r in self._reactions.itervalues():
             if hasattr(r, 'genes') and r.genes is not None:
                 self._genes.update(r.genes)
+
+        self._check_reaction_compounds()
 
     @property
     def name(self):
@@ -136,14 +142,18 @@ class MetabolicModel(object):
         print('- Reactions: {}'.format(len(self.reactions)))
         print('- Genes: {}'.format(len(self.genes)))
 
-    def check_reaction_compounds(self):
+    def _check_reaction_compounds(self):
         """Check that reaction compounds are defined in the model"""
+        undefined = set()
         for reaction in self.reactions.itervalues():
             if reaction.equation is not None:
                 for compound, value in reaction.equation.compounds:
                     if compound.name not in self.compounds:
-                        return reaction.id, compound.name
-        return None, None
+                        undefined.add((reaction.id, compound.name))
+
+        if len(undefined) > 0:
+            raise ParseError('Some reaction compounds are not defined in'
+                             'the model: {}'.format(undefined))
 
 
 class ParseError(Exception):
@@ -170,11 +180,6 @@ class ImportiMA945(Importer):
         model = MetabolicModel(
             'iMA945', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -214,11 +219,10 @@ class ImportiMA945(Importer):
 
             kegg = None if kegg == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('reactions')
@@ -259,9 +263,8 @@ class ImportiMA945(Importer):
             else:
                 genes = None
 
-            yield reaction_id, ReactionEntry(id=reaction_id, name=name,
-                                             genes=genes, equation=equation,
-                                             subsystem=None, ec=None)
+            yield ReactionEntry(id=reaction_id, name=name,
+                                genes=genes, equation=equation)
 
 
 class ImportiRR1083(Importer):
@@ -284,12 +287,6 @@ class ImportiRR1083(Importer):
 
         model = MetabolicModel(
             'iRR1083', self._read_compounds(), self._read_reactions())
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
 
@@ -316,11 +313,10 @@ class ImportiRR1083(Importer):
 
             kegg = None if kegg == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula_neutral,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula_neutral,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Gene Protein Reaction iRR1083')
@@ -347,9 +343,8 @@ class ImportiRR1083(Importer):
 
             subsystem = None if subsystem == '' else subsystem
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=None, ec=None)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation)
 
 
 class ImportiJO1366(Importer):
@@ -373,11 +368,6 @@ class ImportiJO1366(Importer):
         model = MetabolicModel(
             'iJO1366', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -410,11 +400,10 @@ class ImportiJO1366(Importer):
             kegg = None if kegg.strip() == '' else kegg
             cas = None if cas.strip() == '' else cas
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Table 2')
@@ -441,10 +430,9 @@ class ImportiJO1366(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=subsystem,
-                                  ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem,
+                                ec=ec)
 
 
 class EColiTextbookImport(Importer):
@@ -467,11 +455,6 @@ class EColiTextbookImport(Importer):
 
         model = MetabolicModel(
             'EColi_textbook', self._read_compounds(), self._read_reactions())
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError('Compound {}, {} not defined in compound table'.format(
-                reaction_id, compound_name))
 
         return model
 
@@ -510,11 +493,10 @@ class EColiTextbookImport(Importer):
             cas = None if cas.strip() == '' or cas == 'None' else cas
             kegg = None if kegg.strip() == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('reactions')
@@ -541,10 +523,8 @@ class EColiTextbookImport(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=subsystem,
-                                  ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem, ec=ec)
 
 
 class ImportSTMv1_0(Importer):
@@ -568,11 +548,6 @@ class ImportSTMv1_0(Importer):
         model = MetabolicModel(
             'STM_v1.0', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -598,11 +573,8 @@ class ImportSTMv1_0(Importer):
 
             kegg = None if kegg.strip() == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=None,
-                                  charge=charge, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name,
+                                formula=formula, charge=charge, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('SI Tables - S2a - Reactions')
@@ -629,10 +601,9 @@ class ImportSTMv1_0(Importer):
             else:
                 genes = None
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=None)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name,
+                                genes=genes, equation=equation,
+                                subsystem=subsystem)
 
 
 class ImportiJN746(Importer):
@@ -662,11 +633,6 @@ class ImportiJN746(Importer):
         model = MetabolicModel(
             'iJN746', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -702,11 +668,9 @@ class ImportiJN746(Importer):
             else:
                 cas = str(cas)
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                formula_neutral=formula_neutral,
+                                charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._reaction_book.sheet_by_name('Additional file 9')
@@ -733,11 +697,9 @@ class ImportiJN746(Importer):
             else:
                 genes = None
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=ec)
-            yield reaction_id, entry
-
+            yield ReactionEntry(id=reaction_id, name=name,
+                                genes=genes, equation=equation,
+                                subsystem=subsystem, ec=ec)
 
 
 class ImportiJP815(Importer):
@@ -761,11 +723,6 @@ class ImportiJP815(Importer):
         model = MetabolicModel(
             'iJP815', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError('Compound {}, {} not defined in compound table'.format(
-                reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -785,11 +742,7 @@ class ImportiJP815(Importer):
             if m:
                 name = m.group(1)
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=None,
-                                  formula_neutral=None,
-                                  charge=None, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Reactions')
@@ -824,10 +777,8 @@ class ImportiJP815(Importer):
             else:
                 genes = None
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=None)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem)
 
 
 class ImportiSyn731(Importer):
@@ -851,11 +802,6 @@ class ImportiSyn731(Importer):
         model = MetabolicModel(
             'iSyn731', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -900,11 +846,8 @@ class ImportiSyn731(Importer):
             else:
                 kegg = None
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=None,
-                                  charge=charge, kegg=kegg, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                charge=charge, kegg=kegg)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Model')
@@ -939,10 +882,8 @@ class ImportiSyn731(Importer):
 
             ec = ec if ec.strip() != '' and ec != 'Undetermined' else None
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=subsystem,
-                                  ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem, ec=ec)
 
 
 class ImportiCce806(Importer):
@@ -971,12 +912,6 @@ class ImportiCce806(Importer):
 
         model = MetabolicModel(
             'iCce806', self._read_compounds(), self._read_reactions())
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
 
@@ -1023,11 +958,9 @@ class ImportiCce806(Importer):
             else:
                 cas = None
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                formula_neutral=formula, charge=charge,
+                                kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._reaction_book.sheet_by_name('S1 - Reactions')
@@ -1080,9 +1013,8 @@ class ImportiCce806(Importer):
             else:
                 ec = None
 
-            yield reaction_id, ReactionEntry(id=reaction_id, name=name,
-                                             genes=genes, equation=equation,
-                                             subsystem=subsystem, ec=ec)
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem, ec=ec)
 
 
 class ImportGSMN_TB(Importer):
@@ -1111,12 +1043,6 @@ class ImportGSMN_TB(Importer):
 
         model = MetabolicModel(
             'GSMN-TB', self._read_compounds(), self._read_reactions())
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
 
@@ -1154,18 +1080,12 @@ class ImportGSMN_TB(Importer):
            # cas = None if cas.strip() == '' or cas == 'None' else cas
            # kegg = None if kegg.strip() == '' else kegg
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=None,
-                                  formula_neutral=None,
-                                  charge=None, kegg=None, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name)
 
         def create_missing(compound_id, name=None):
             if name is None:
                 name = compound_id
-            return compound_id, CompoundEntry(
-                id=compound_id, name=name, formula=None, formula_neutral=None,
-                charge=None, kegg=None, cas=None)
+            return CompoundEntry(id=compound_id, name=name)
 
         # Generate missing compounds
         yield create_missing('MBT-HOLO', 'Mycobactin-Holo')
@@ -1224,10 +1144,8 @@ class ImportGSMN_TB(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=subsystem,
-                                  ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem, ec=ec)
 
 
 class ImportiNJ661(Importer):
@@ -1250,12 +1168,6 @@ class ImportiNJ661(Importer):
 
         model = MetabolicModel(
             'iNJ661', self._read_compounds(), self._read_reactions())
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
 
@@ -1280,11 +1192,8 @@ class ImportiNJ661(Importer):
             except ValueError:
                 charge = None
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=None,
-                                  charge=charge, kegg=None, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                charge=charge)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('iNJ661')
@@ -1309,10 +1218,9 @@ class ImportiNJ661(Importer):
                 equation = None
 
             subsystem = None if subsystem.strip() == '' else subsystem
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=None)
-            yield reaction_id, entry
+
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem)
 
 
 class ImportGenericiNJ661mv(Importer):
@@ -1336,12 +1244,6 @@ class ImportGenericiNJ661mv(Importer):
         model = MetabolicModel(
             name, self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -1358,11 +1260,7 @@ class ImportGenericiNJ661mv(Importer):
             else:
                 formula = None
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=None,
-                                  charge=None, kegg=None, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('reactions')
@@ -1393,10 +1291,8 @@ class ImportGenericiNJ661mv(Importer):
 
             subsystem = None if subsystem.strip() == '' else subsystem
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem, ec=None)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem)
 
 
 class ImportiNJ661m(ImportGenericiNJ661mv):
@@ -1453,12 +1349,6 @@ class ImportShewanellaOng(Importer):
             name, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = self.biomass_names[col_index]
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -1493,11 +1383,9 @@ class ImportShewanellaOng(Importer):
             else:
                 cas = str(cas)
 
-            entry = CompoundEntry(id=compound_id, name=name,
-                                  formula=formula,
-                                  formula_neutral=formula_neutral,
-                                  charge=charge, kegg=kegg, cas=cas)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                formula_neutral=formula_neutral, charge=charge,
+                                kegg=kegg, cas=cas)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('S2-Reactions')
@@ -1555,10 +1443,8 @@ class ImportShewanellaOng(Importer):
             name = None if name.strip() == '' else name.strip()
             subsystem = None if subsystem.strip() == '' else subsystem
 
-            entry = ReactionEntry(id=reaction_id, name=name,
-                                  genes=genes, equation=equation,
-                                  subsystem=subsystem)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, subsystem=subsystem)
 
 
 class ImportiMR1_799(ImportShewanellaOng):
@@ -1664,12 +1550,6 @@ class ImportModelSEED(Importer):
             'ModelSEED model', self._read_compounds(),
             self._read_reactions(peg_mapping))
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -1688,10 +1568,8 @@ class ImportModelSEED(Importer):
             else:
                 formula = None
 
-            entry = CompoundEntry(id=compound_id, name=name, formula=formula,
-                                  formula_neutral=None, charge=charge,
-                                  kegg=None, cas=None)
-            yield compound_id, entry
+            yield CompoundEntry(id=compound_id, name=name, formula=formula,
+                                charge=charge)
 
     def _read_reactions(self, peg_mapping):
         sheet = self._book.sheet_by_name('Reactions')
@@ -1728,9 +1606,8 @@ class ImportModelSEED(Importer):
                 ec_list = frozenset([ec_list])
                 ec = next(iter(ec_list))
 
-            entry = ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                  equation=equation, subsystem=None, ec=ec)
-            yield reaction_id, entry
+            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
+                                equation=equation, ec=ec)
 
 
 class SBMLImporter(Importer):
@@ -1754,7 +1631,7 @@ class SBMLImporter(Importer):
         return source
 
     def _get_reader(self, f):
-        raise NotImplementedError('Subclasses must implement _open_reader()')
+        raise NotImplementedError('Subclasses must implement _get_reader()')
 
     def import_model(self, source):
         source = self._resolve_source(source)
@@ -1768,14 +1645,7 @@ class SBMLImporter(Importer):
             model_name = self._reader.id
 
         model = MetabolicModel(
-            model_name, ((s.id, s) for s in self._reader.species),
-            ((r.id, r) for r in self._reader.reactions))
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
+            model_name, self._reader.species, self._reader.reactions)
 
         return model
 
@@ -1853,6 +1723,54 @@ class SBMLNonstrictImporter(SBMLImporter):
             logger.info('Detected biomass reaction: {}'.format(
                 biomass_reaction))
 
+        model = MetabolicModel(
+            model.name,
+            self._convert_compounds(model.compounds.itervalues()),
+            self._convert_reactions(model.reactions.itervalues()))
         model.biomass_reaction = biomass_reaction
 
         return model
+
+    def _convert_compounds(self, compounds):
+        """Convert SBML species entries to compounds"""
+        for compound in compounds:
+            properties = compound.properties
+
+            # Extract information from notes
+            if compound.xml_notes is not None:
+                for note in compound.xml_notes.itertext():
+                    m = re.match(r'FORMULA: (.+)$', note)
+                    if m:
+                        properties['formula'] = m.group(1)
+
+                    m = re.match(r'KEGG ID: (.+)$', note)
+                    if m:
+                        properties['kegg'] = m.group(1)
+
+                    m = re.match(r'PubChem ID: (.+)$', note)
+                    if m:
+                        properties['pubchem_id'] = m.group(1)
+
+                    m = re.match(r'ChEBI ID: (.+)$', note)
+                    if m:
+                        properties['chebi_id'] = m.group(1)
+
+            yield CompoundEntry(**properties)
+
+    def _convert_reactions(self, reactions):
+        """Convert SBML reaction entries to reactions"""
+        for reaction in reactions:
+            properties = reaction.properties
+
+            # Extract information from notes
+            if reaction.xml_notes is not None:
+                for note in reaction.xml_notes.itertext():
+                    m = re.match(r'SUBSYSTEM: (.+)$', note)
+                    if m:
+                        properties['subsystem'] = m.group(1)
+
+                    m = re.match(r'GENE_ASSOCIATION: (.+)$', note)
+                    if m:
+                        properties['gene_association'] = m.group(1)
+
+            yield ReactionEntry(**properties)
