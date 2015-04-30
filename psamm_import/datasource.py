@@ -106,6 +106,8 @@ class MetabolicModel(object):
             if hasattr(r, 'genes') and r.genes is not None:
                 self._genes.update(r.genes)
 
+        self._check_reaction_compounds()
+
     @property
     def name(self):
         return self._name
@@ -140,14 +142,18 @@ class MetabolicModel(object):
         print('- Reactions: {}'.format(len(self.reactions)))
         print('- Genes: {}'.format(len(self.genes)))
 
-    def check_reaction_compounds(self):
+    def _check_reaction_compounds(self):
         """Check that reaction compounds are defined in the model"""
+        undefined = set()
         for reaction in self.reactions.itervalues():
             if reaction.equation is not None:
                 for compound, value in reaction.equation.compounds:
                     if compound.name not in self.compounds:
-                        return reaction.id, compound.name
-        return None, None
+                        undefined.add((reaction.id, compound.name))
+
+        if len(undefined) > 0:
+            raise ParseError('Some reaction compounds are not defined in'
+                             'the model: {}'.format(undefined))
 
 
 class ParseError(Exception):
@@ -174,11 +180,6 @@ class ImportiMA945(Importer):
         model = MetabolicModel(
             'iMA945', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -287,12 +288,6 @@ class ImportiRR1083(Importer):
         model = MetabolicModel(
             'iRR1083', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -373,11 +368,6 @@ class ImportiJO1366(Importer):
         model = MetabolicModel(
             'iJO1366', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -465,11 +455,6 @@ class EColiTextbookImport(Importer):
 
         model = MetabolicModel(
             'EColi_textbook', self._read_compounds(), self._read_reactions())
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError('Compound {}, {} not defined in compound table'.format(
-                reaction_id, compound_name))
 
         return model
 
@@ -563,11 +548,6 @@ class ImportSTMv1_0(Importer):
         model = MetabolicModel(
             'STM_v1.0', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -653,11 +633,6 @@ class ImportiJN746(Importer):
         model = MetabolicModel(
             'iJN746', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -748,11 +723,6 @@ class ImportiJP815(Importer):
         model = MetabolicModel(
             'iJP815', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError('Compound {}, {} not defined in compound table'.format(
-                reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -832,11 +802,6 @@ class ImportiSyn731(Importer):
         model = MetabolicModel(
             'iSyn731', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
         return model
 
     def _read_compounds(self):
@@ -947,12 +912,6 @@ class ImportiCce806(Importer):
 
         model = MetabolicModel(
             'iCce806', self._read_compounds(), self._read_reactions())
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
 
@@ -1085,12 +1044,6 @@ class ImportGSMN_TB(Importer):
         model = MetabolicModel(
             'GSMN-TB', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -1216,12 +1169,6 @@ class ImportiNJ661(Importer):
         model = MetabolicModel(
             'iNJ661', self._read_compounds(), self._read_reactions())
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -1296,12 +1243,6 @@ class ImportGenericiNJ661mv(Importer):
 
         model = MetabolicModel(
             name, self._read_compounds(), self._read_reactions())
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
 
@@ -1407,12 +1348,6 @@ class ImportShewanellaOng(Importer):
         model = MetabolicModel(
             name, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = self.biomass_names[col_index]
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
 
@@ -1615,12 +1550,6 @@ class ImportModelSEED(Importer):
             'ModelSEED model', self._read_compounds(),
             self._read_reactions(peg_mapping))
 
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
-
         return model
 
     def _read_compounds(self):
@@ -1717,12 +1646,6 @@ class SBMLImporter(Importer):
 
         model = MetabolicModel(
             model_name, self._reader.species, self._reader.reactions)
-
-        reaction_id, compound_name = model.check_reaction_compounds()
-        if compound_name is not None:
-            raise ParseError(
-                'Compound {}, {} not defined in compound table'.format(
-                    reaction_id, compound_name))
 
         return model
 
