@@ -162,7 +162,8 @@ def main():
 
     yaml_args = {'default_flow_style': False,
                  'encoding': 'utf-8',
-                 'allow_unicode': True}
+                 'allow_unicode': True,
+                 'width': 79}
 
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
         yaml.dump(list(model_compounds(model)), f, **yaml_args)
