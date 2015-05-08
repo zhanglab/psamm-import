@@ -368,6 +368,7 @@ class ImportiJO1366(Importer):
 
         model = MetabolicModel(
             'iJO1366', self._read_compounds(), self._read_reactions())
+        model.biomass_reaction = 'Ec_biomass_iJO1366_core_53p95M'
 
         return model
 
