@@ -547,6 +547,7 @@ class ImportSTMv1_0(Importer):
 
         model = MetabolicModel(
             'STM_v1.0', self._read_compounds(), self._read_reactions())
+        model.biomass_reaction = 'biomass_iRR1083_metals'
 
         return model
 
