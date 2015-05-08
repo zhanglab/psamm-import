@@ -804,6 +804,7 @@ class ImportiSyn731(Importer):
 
         model = MetabolicModel(
             'iSyn731', self._read_compounds(), self._read_reactions())
+        model.biomass_reaction = 'Biomass_Hetero'
 
         return model
 
