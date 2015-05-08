@@ -916,6 +916,7 @@ class ImportiCce806(Importer):
 
         model = MetabolicModel(
             'iCce806', self._read_compounds(), self._read_reactions())
+        model.biomass_reaction = 'CyanoBM (average)'
 
         return model
 
