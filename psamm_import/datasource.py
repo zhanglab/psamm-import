@@ -1248,6 +1248,7 @@ class ImportGenericiNJ661mv(Importer):
 
         model = MetabolicModel(
             name, self._read_compounds(), self._read_reactions())
+        model.biomass_reaction = 'biomass_Mtb_9_60atp_test_NOF'
 
         return model
 
