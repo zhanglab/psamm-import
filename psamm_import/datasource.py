@@ -179,6 +179,7 @@ class ImportiMA945(Importer):
 
         model = MetabolicModel(
             'iMA945', self._read_compounds(), self._read_reactions())
+        model.biomass_reaction = 'ST_biomass_core'
 
         return model
 
