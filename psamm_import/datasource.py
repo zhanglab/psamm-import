@@ -161,7 +161,7 @@ class ParseError(Exception):
 
 
 class ImportiMA945(Importer):
-    name = 'ima945'
+    name = 'iMA945'
     title = 'Salmonella enterica iMA945 (Excel format), AbuOun et al., 2009'
 
     filename = 'jbc.M109.005868-5.xls'
@@ -178,7 +178,7 @@ class ImportiMA945(Importer):
         self._book = xlrd.open_workbook(source)
 
         model = MetabolicModel(
-            'iMA945', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'ST_biomass_core'
 
         return model
@@ -269,7 +269,7 @@ class ImportiMA945(Importer):
 
 
 class ImportiRR1083(Importer):
-    name = 'irr1083'
+    name = 'iRR1083'
     title = ('Salmonella enterica iRR1083 (Excel format),'
              ' Raghunathan et al., 2009')
 
@@ -287,7 +287,7 @@ class ImportiRR1083(Importer):
         self._book = xlrd.open_workbook(source)
 
         model = MetabolicModel(
-            'iRR1083', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
 
         return model
 
@@ -349,7 +349,7 @@ class ImportiRR1083(Importer):
 
 
 class ImportiJO1366(Importer):
-    name = 'ijo1366'
+    name = 'iJO1366'
     title = ('Escerichia coli iJO1366 (Excel format),'
              ' Orth et al., 2011')
 
@@ -367,7 +367,7 @@ class ImportiJO1366(Importer):
         self._book = xlrd.open_workbook(source)
 
         model = MetabolicModel(
-            'iJO1366', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'Ec_biomass_iJO1366_core_53p95M'
 
         return model
@@ -438,7 +438,7 @@ class ImportiJO1366(Importer):
 
 
 class EColiTextbookImport(Importer):
-    name = 'ecoli_textbook'
+    name = 'EColi_textbook'
     title = ('Escerichia coli Textbook (core) model (Excel format),'
              ' Orth et al., 2010')
 
@@ -456,7 +456,7 @@ class EColiTextbookImport(Importer):
         self._book = xlrd.open_workbook(source)
 
         model = MetabolicModel(
-            'EColi_textbook', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
 
         return model
 
@@ -530,7 +530,7 @@ class EColiTextbookImport(Importer):
 
 
 class ImportSTMv1_0(Importer):
-    name = 'stm_v1.0'
+    name = 'STM_v1.0'
     title = ('Salmonella enterica STM_v1.0 (Excel format),'
              ' Thiele et al., 2011')
 
@@ -548,7 +548,7 @@ class ImportSTMv1_0(Importer):
         self._book = xlrd.open_workbook(source)
 
         model = MetabolicModel(
-            'STM_v1.0', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'biomass_iRR1083_metals'
 
         return model
@@ -610,7 +610,7 @@ class ImportSTMv1_0(Importer):
 
 
 class ImportiJN746(Importer):
-    name = 'ijn746'
+    name = 'iJN746'
     title = ('Pseudomonas putida iJN746 (Excel format),'
              ' Nogales et al., 2011')
 
@@ -634,7 +634,7 @@ class ImportiJN746(Importer):
         self._reaction_book = xlrd.open_workbook(reaction_source)
 
         model = MetabolicModel(
-            'iJN746', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
 
         return model
 
@@ -706,7 +706,7 @@ class ImportiJN746(Importer):
 
 
 class ImportiJP815(Importer):
-    name = 'ijp815'
+    name = 'iJP815'
     title = ('Pseudomonas putida iJP815 (Excel format),'
              ' Puchalka et al., 2008')
 
@@ -724,7 +724,7 @@ class ImportiJP815(Importer):
         self._book = xlrd.open_workbook(source)
 
         model = MetabolicModel(
-            'iJP815', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
 
         return model
 
@@ -785,7 +785,7 @@ class ImportiJP815(Importer):
 
 
 class ImportiSyn731(Importer):
-    name = 'isyn731'
+    name = 'iSyn731'
     title = ('Synechocystis sp. PCC 6803 iSyn731 (Excel format),'
              ' Saha et al., 2012')
 
@@ -803,7 +803,7 @@ class ImportiSyn731(Importer):
         self._book = xlrd.open_workbook(source)
 
         model = MetabolicModel(
-            'iSyn731', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'Biomass_Hetero'
 
         return model
@@ -891,7 +891,7 @@ class ImportiSyn731(Importer):
 
 
 class ImportiCce806(Importer):
-    name = 'icce806'
+    name = 'iCce806'
     title = ('Cyanothece sp. ATCC 51142 iCce806 (Excel format),'
              ' Vu et al., 2012')
 
@@ -915,7 +915,7 @@ class ImportiCce806(Importer):
         self._reaction_book = xlrd.open_workbook(reaction_source)
 
         model = MetabolicModel(
-            'iCce806', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'CyanoBM (average)'
 
         return model
@@ -1023,7 +1023,7 @@ class ImportiCce806(Importer):
 
 
 class ImportGSMN_TB(Importer):
-    name = 'gsmn-tb'
+    name = 'GSMN-TB'
     title = ('Mycobacterium tuberculosis GSMN-TB (Excel format),'
              ' Beste et al., 2007')
 
@@ -1047,7 +1047,7 @@ class ImportGSMN_TB(Importer):
         self._reaction_book = xlrd.open_workbook(reaction_source)
 
         model = MetabolicModel(
-            'GSMN-TB', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
 
         return model
 
@@ -1154,7 +1154,7 @@ class ImportGSMN_TB(Importer):
 
 
 class ImportiNJ661(Importer):
-    name = 'inj661'
+    name = 'iNJ661'
     title = ('Mycobacterium tuberculosis iNJ661 (Excel format),'
              ' Jamshidi et al., 2007')
 
@@ -1172,7 +1172,7 @@ class ImportiNJ661(Importer):
         self._book = xlrd.open_workbook(source)
 
         model = MetabolicModel(
-            'iNJ661', self._read_compounds(), self._read_reactions())
+            self.title, self._read_compounds(), self._read_reactions())
 
         return model
 
@@ -1308,7 +1308,7 @@ class ImportiNJ661m(ImportGenericiNJ661mv):
     filename = '1752-0509-4-160-s3.xls'
 
     def import_model(self, source):
-        return self.import_model_named('iNJ661m', source)
+        return self.import_model_named(self.title, source)
 
 
 class ImportiNJ661v(ImportGenericiNJ661mv):
@@ -1318,7 +1318,7 @@ class ImportiNJ661v(ImportGenericiNJ661mv):
     filename = '1752-0509-4-160-s5.xls'
 
     def import_model(self, source):
-        return self.import_model_named('iNJ661v', source)
+        return self.import_model_named(self.title, source)
 
 
 class ImportShewanellaOng(Importer):
@@ -1459,7 +1459,7 @@ class ImportiMR1_799(ImportShewanellaOng):
         ' Ong et al., 2014')
 
     def import_model(self, source):
-        return self.import_model_named('iMR1_799', 0, source)
+        return self.import_model_named(self.title, 0, source)
 
 
 class ImportiMR4_812(ImportShewanellaOng):
@@ -1468,7 +1468,7 @@ class ImportiMR4_812(ImportShewanellaOng):
         ' Ong et al., 2014')
 
     def import_model(self, source):
-        return self.import_model_named('iMR4_812', 1, source)
+        return self.import_model_named(self.title, 1, source)
 
 
 class ImportiW3181_789(ImportShewanellaOng):
@@ -1477,7 +1477,7 @@ class ImportiW3181_789(ImportShewanellaOng):
         ' Ong et al., 2014')
 
     def import_model(self, source):
-        return self.import_model_named('iW3181_789', 2, source)
+        return self.import_model_named(self.title, 2, source)
 
 
 class ImportiOS217_672(ImportShewanellaOng):
@@ -1486,13 +1486,13 @@ class ImportiOS217_672(ImportShewanellaOng):
         ' Ong et al., 2014')
 
     def import_model(self, source):
-        return self.import_model_named('iOS217_672', 3, source)
+        return self.import_model_named(self.title, 3, source)
 
 
 class ImportModelSEED(Importer):
     """Read metabolic model for a ModelSEED model"""
 
-    name = 'modelseed'
+    name = 'ModelSEED'
     title = 'ModelSEED model (Excel format)'
 
     def help(self):
@@ -1659,7 +1659,7 @@ class SBMLImporter(Importer):
 class SBMLStrictImporter(SBMLImporter):
     """Read metabolic model from an SBML file using strict parser"""
 
-    name = 'sbml-strict'
+    name = 'SBML-strict'
     title = 'SBML model (strict)'
 
     def _open_reader(self, f):
@@ -1669,7 +1669,7 @@ class SBMLStrictImporter(SBMLImporter):
 class SBMLNonstrictImporter(SBMLImporter):
     """Read metabolic model from an SBML file using non-strict parser"""
 
-    name = 'sbml'
+    name = 'SBML'
     title = 'SBML model (non-strict)'
 
     def _open_reader(self, f):
