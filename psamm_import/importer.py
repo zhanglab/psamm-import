@@ -117,9 +117,10 @@ def main():
         importer_name = getattr(importer_class, 'name', None)
         importer_title = getattr(importer_class, 'title', None)
         if (importer_name is not None and
-                importer_title is not None and
-                importer_name not in importers):
-            importers[importer_name] = importer_class
+                importer_title is not None):
+            canonical = importer_name.lower()
+            if canonical not in importers:
+                importers[canonical] = importer_class
 
     # Print list of importers
     if args.format in ('list', 'help'):
@@ -132,12 +133,13 @@ def main():
                 print('{:<10}  {}'.format(name, importer_class.title))
         sys.exit(0)
 
-    if args.format not in importers:
-        logger.error('Importer {} not found!'.format(args.format))
+    importer_name = args.format.lower()
+    if importer_name not in importers:
+        logger.error('Importer {} not found!'.format(importer_name))
         logger.info('Use "list" to see available importers.')
         sys.exit(-1)
 
-    importer = importers[args.format]()
+    importer = importers[importer_name]()
 
     try:
         model = importer.import_model(args.source)
