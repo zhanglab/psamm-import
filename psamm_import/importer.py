@@ -6,7 +6,7 @@ import os
 import errno
 import argparse
 import logging
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 
 import yaml
 from psamm.datasource import modelseed
@@ -75,20 +75,29 @@ def model_compounds(model):
         yield d
 
 
-def model_reactions(model):
+def model_reactions(model, exchange=False):
     """Yield model reactions as YAML dicts"""
 
     for reaction_id, reaction in sorted(model.reactions.iteritems()):
         d = OrderedDict()
         d['id'] = encode_utf8(reaction_id)
 
+        # Check reaction equation
+        equation = reaction.properties.get('equation')
+        if equation is not None and len(equation.compounds) == 0:
+            equation = None
+
+        # Check whether reaction is exchange
+        if not exchange and equation is not None:
+            if len(equation.compounds) == 1:
+                continue
+
         if hasattr(reaction, 'name') and reaction.name is not None:
             d['name'] = encode_utf8(reaction.name)
         if hasattr(reaction, 'genes') and reaction.genes is not None:
             d['genes'] = [encode_utf8(g) for g in reaction.genes]
-        if hasattr(reaction, 'equation') and reaction.equation is not None:
-            d['equation'] = encode_utf8(modelseed.format_reaction(
-                reaction.equation))
+        if equation is not None:
+            d['equation'] = encode_utf8(modelseed.format_reaction(equation))
         if (hasattr(reaction, 'subsystem') and
                 reaction.subsystem is not None):
             d['subsystem'] = encode_utf8(reaction.subsystem)
@@ -98,6 +107,52 @@ def model_reactions(model):
         yield d
 
 
+def model_medium(model):
+    """Return medium definition as YAML dict"""
+
+    # Count and use the most common compartment as the default compartment
+    compartment_count = Counter()
+    for reaction_id, reaction in model.reactions.iteritems():
+        equation = reaction.properties.get('equation')
+        if equation is None or len(equation.compounds) != 1:
+            continue
+        compound, _ = equation.compounds[0]
+        compartment_count[compound.compartment] += 1
+
+    if len(compartment_count) > 0:
+        default_compartment, _ = compartment_count.most_common(1)[0]
+    else:
+        default_compartment = None
+
+    # Generate list of compounds in medium
+    compounds = []
+    for reaction_id, reaction in sorted(model.reactions.iteritems()):
+        equation = reaction.properties.get('equation')
+        if equation is None:
+            continue
+
+        if len(equation.compounds) != 1:
+            continue
+
+        compound, _ = equation.compounds[0]
+
+        c = OrderedDict([
+            ('id', encode_utf8(compound.name))])
+        if compound.compartment != default_compartment:
+            c['compartment'] = encode_utf8(compound.compartment)
+        c['reaction'] = encode_utf8(reaction_id)
+
+        compounds.append(c)
+
+    medium = OrderedDict([
+        ('name', 'Default medium')])
+    if default_compartment is not None:
+        medium['compartment'] = encode_utf8(default_compartment)
+    medium['compounds'] = compounds
+
+    return medium
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Import from external model formats')
@@ -105,6 +160,8 @@ def main():
                         help='Source directory or file')
     parser.add_argument('--dest', metavar='path', default='.',
                         help='Destination directory (default is ".")')
+    parser.add_argument('--no-medium', action='store_true',
+                        help='Disable importing exchange reactions as medium')
     parser.add_argument('format', help='Format to import ("list" to see all)')
 
     args = parser.parse_args()
@@ -170,16 +227,27 @@ def main():
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
         yaml.dump(list(model_compounds(model)), f, **yaml_args)
 
+    if not args.no_medium:
+        logger.info('Converting exchange reactions to medium definition')
+
+    exchange = args.no_medium
     with open(os.path.join(dest, 'reactions.yaml'), 'w+') as f:
-        yaml.dump(list(model_reactions(model)), f, **yaml_args)
+        reactions = list(model_reactions(model, exchange=exchange))
+        yaml.dump(reactions, f, **yaml_args)
+
+    if not args.no_medium:
+        with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
+            yaml.dump(model_medium(model), f, **yaml_args)
 
     model_d = OrderedDict([('name', model.name)])
     if model.biomass_reaction is not None:
         model_d['biomass'] = model.biomass_reaction
     model_d.update([
         ('compounds', [{'include': 'compounds.yaml'}]),
-        ('reactions', [{'include': 'reactions.yaml'}])
-    ])
+        ('reactions', [{'include': 'reactions.yaml'}])])
+
+    if not args.no_medium:
+        model_d['media'] = [{'include': 'medium.yaml'}]
 
     with open(os.path.join(dest, 'model.yaml'), 'w+') as f:
         yaml.dump(model_d, f, **yaml_args)
