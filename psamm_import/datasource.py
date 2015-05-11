@@ -1680,6 +1680,7 @@ class SBMLNonstrictImporter(SBMLImporter):
 
         biomass_reaction = None
         objective_reactions = set()
+        flux_limits = {}
         for reaction in self._reader.reactions:
             # Check whether species multiple times
             compounds = set()
@@ -1724,6 +1725,8 @@ class SBMLNonstrictImporter(SBMLImporter):
                 logger.warning('Lower bound of irreversible reaction {} is'
                                ' {}'.format(reaction.id, lower_bound))
 
+            flux_limits[reaction.id] = (lower_bound, upper_bound)
+
         if len(objective_reactions) == 1:
             biomass_reaction = next(iter(objective_reactions))
             logger.info('Detected biomass reaction: {}'.format(
@@ -1732,7 +1735,8 @@ class SBMLNonstrictImporter(SBMLImporter):
         model = MetabolicModel(
             model.name,
             self._convert_compounds(model.compounds.itervalues()),
-            self._convert_reactions(model.reactions.itervalues()))
+            self._convert_reactions(model.reactions.itervalues(),
+                                    flux_limits))
         model.biomass_reaction = biomass_reaction
 
         return model
@@ -1763,7 +1767,7 @@ class SBMLNonstrictImporter(SBMLImporter):
 
             yield CompoundEntry(**properties)
 
-    def _convert_reactions(self, reactions):
+    def _convert_reactions(self, reactions, flux_limits):
         """Convert SBML reaction entries to reactions"""
         for reaction in reactions:
             properties = reaction.properties
@@ -1778,5 +1782,13 @@ class SBMLNonstrictImporter(SBMLImporter):
                     m = re.match(r'GENE_ASSOCIATION: (.+)$', note)
                     if m:
                         properties['gene_association'] = m.group(1)
+
+            # Extract flux limits
+            if reaction.id in flux_limits:
+                lower, upper = flux_limits[reaction.id]
+                if lower is not None:
+                    properties['lower_flux'] = lower
+                if upper is not None:
+                    properties['upper_flux'] = upper
 
             yield ReactionEntry(**properties)
