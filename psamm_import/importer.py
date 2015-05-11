@@ -176,12 +176,14 @@ def model_medium(model, default_flux_limit):
             upper_default = default_flux_limit
 
         # If the stoichiometric value of the reaction is reversed, the flux
-        # values must be reversed too, so divide by -value.
+        # values must be reversed too, so divide by -value. We add zero so that
+        # a negative zero (-0.0) is converted to normal zero in the output
+        # file.
         lower_flux, upper_flux = None, None
         if 'lower_flux' in reaction.properties:
-            lower_flux = reaction.properties['lower_flux'] / -value
+            lower_flux = (reaction.properties['lower_flux'] / -value) + 0
         if 'upper_flux' in reaction.properties:
-            upper_flux = reaction.properties['upper_flux'] / -value
+            upper_flux = (reaction.properties['upper_flux'] / -value) + 0
 
         c = OrderedDict([
             ('id', encode_utf8(compound.name))])
