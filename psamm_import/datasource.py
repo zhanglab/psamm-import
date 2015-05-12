@@ -1684,7 +1684,7 @@ class SBMLNonstrictImporter(SBMLImporter):
         for reaction in self._reader.reactions:
             # Check whether species multiple times
             compounds = set()
-            for c, v in reaction.equation.left:
+            for c, _ in reaction.equation.compounds:
                 if c.name in compounds:
                     logger.warning(
                         'Compound {} appears multiple times in the same'
