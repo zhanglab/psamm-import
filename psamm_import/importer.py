@@ -179,12 +179,19 @@ def model_medium(model, default_flux_limit):
             upper_default = default_flux_limit
 
         # We multiply the flux bounds by value in order to create equivalent
-        # exchange reactions with stoichiometric value of one.
+        # exchange reactions with stoichiometric value of one. If the flux
+        # bounds are not set but the reaction is unidirectional, the implicit
+        # flux bounds must be used.
         lower_flux, upper_flux = None, None
         if 'lower_flux' in reaction.properties:
             lower_flux = reaction.properties['lower_flux'] * abs(value)
+        elif equation.direction == Reaction.Right:
+            lower_flux = 0.0
+
         if 'upper_flux' in reaction.properties:
             upper_flux = reaction.properties['upper_flux'] * abs(value)
+        elif equation.direction == Reaction.Left:
+            upper_flux = 0.0
 
         # If the stoichiometric value of the reaction is reversed, the flux
         # limits must be flipped.
