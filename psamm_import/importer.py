@@ -175,15 +175,20 @@ def model_medium(model, default_flux_limit):
             lower_default = -default_flux_limit
             upper_default = default_flux_limit
 
-        # If the stoichiometric value of the reaction is reversed, the flux
-        # values must be reversed too, so divide by -value. We add zero so that
-        # a negative zero (-0.0) is converted to normal zero in the output
-        # file.
+        # We multiply the flux bounds by value in order to create equivalent
+        # exchange reactions with stoichiometric value of one.
         lower_flux, upper_flux = None, None
         if 'lower_flux' in reaction.properties:
-            lower_flux = (reaction.properties['lower_flux'] / -value) + 0
+            lower_flux = reaction.properties['lower_flux'] * abs(value)
         if 'upper_flux' in reaction.properties:
-            upper_flux = (reaction.properties['upper_flux'] / -value) + 0
+            upper_flux = reaction.properties['upper_flux'] * abs(value)
+
+        # If the stoichiometric value of the reaction is reversed, the flux
+        # limits must be flipped.
+        if value > 0:
+            lower_flux, upper_flux = (
+                -upper_flux if upper_flux is not None else None,
+                -lower_flux if lower_flux is not None else None)
 
         c = OrderedDict([
             ('id', encode_utf8(compound.name))])
@@ -191,10 +196,12 @@ def model_medium(model, default_flux_limit):
             c['compartment'] = encode_utf8(compound.compartment)
         c['reaction'] = encode_utf8(reaction_id)
 
+        # Assign flux limits if different than the defaults. Also, add 0 so
+        # that -0.0 is converted to plain 0.0 which looks better in the output.
         if lower_flux is not None and lower_flux != lower_default:
-            c['lower'] = lower_flux
+            c['lower'] = lower_flux + 0
         if upper_flux is not None and upper_flux != upper_default:
-            c['upper'] = upper_flux
+            c['upper'] = upper_flux + 0
 
         compounds.append(c)
 
