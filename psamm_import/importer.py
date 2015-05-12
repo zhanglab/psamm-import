@@ -251,7 +251,7 @@ def model_reaction_limits(model, exchange=False, default_flux_limit=None):
                 reaction.properties['upper_flux'] != upper_default):
             upper_flux = reaction.properties['upper_flux']
 
-        if lower_flux is not None and upper_flux is not None:
+        if lower_flux is not None or upper_flux is not None:
             d = OrderedDict([('reaction', encode_utf8(reaction_id))])
             if lower_flux is not None:
                 d['lower'] = lower_flux
