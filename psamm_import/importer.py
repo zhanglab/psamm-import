@@ -117,7 +117,10 @@ def model_reactions(model, exchange=False):
         # Check reaction equation
         equation = reaction.properties.get('equation')
         if equation is not None and len(equation.compounds) == 0:
-            equation = None
+            logger.warning(
+                'Reaction {} was removed since it has no compounds.'.format(
+                    reaction_id))
+            continue
 
         # Check whether reaction is exchange
         if not exchange and equation is not None:
