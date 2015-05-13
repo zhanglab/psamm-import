@@ -1731,6 +1731,10 @@ class SBMLNonstrictImporter(SBMLImporter):
             biomass_reaction = next(iter(objective_reactions))
             logger.info('Detected biomass reaction: {}'.format(
                 biomass_reaction))
+        elif len(objective_reactions) > 1:
+            logger.warning(
+                'Multiple reactions are used as the'
+                ' biomass reaction: {}'.format(objective_reactions))
 
         model = MetabolicModel(
             model.name,
