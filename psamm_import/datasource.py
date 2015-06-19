@@ -1138,7 +1138,7 @@ class ImportGSMN_TB(Importer):
 
     def _read_reactions(self):
         sheet = self._reaction_book.sheet_by_name('File 4')
-        for i in range(5, sheet.nrows):
+        for i in range(4, sheet.nrows):
             (reaction_id, equation, fluxbound, _, ec, genes, name,
                 subsystem) = sheet.row_values(i, end_colx=8)
 
