@@ -19,7 +19,6 @@
 
 import sys
 import os
-import errno
 import argparse
 import logging
 from collections import OrderedDict, Counter
@@ -29,6 +28,8 @@ from psamm.datasource import modelseed
 from psamm.reaction import Reaction
 
 from .datasource import Importer
+from .util import mkdir_p
+
 
 logger = logging.getLogger(__name__)
 
@@ -400,10 +401,6 @@ def main():
 
     # Create destination directory if not exists
     dest = args.dest
-    try:
-        os.makedirs(dest)
-    except OSError as e:
-        if e.errno != errno.EEXIST or not os.path.isdir(dest):
-            raise
+    mkdir_p(dest)
 
     write_yaml_model(model, dest, convert_medium=not args.no_medium)
