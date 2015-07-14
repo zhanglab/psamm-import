@@ -34,7 +34,8 @@ setup(
     packages=find_packages(),
     entry_points = {
         'console_scripts': [
-            'psamm-import = psamm_import.importer:main'
+            'psamm-import = psamm_import.importer:main',
+            'psamm-import-bigg = psamm_import.bigg:main'
         ]
     },
 
