@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Define custom dict representers for YAML
 # This allows reading/writing Python OrderedDicts in the correct order.
-# See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
+# See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts  # noqa
 def dict_representer(dumper, data):
     return dumper.represent_dict(data.iteritems())
 
@@ -70,7 +70,7 @@ def detect_best_flux_limit(model):
     flux_limit_count = Counter()
 
     for reaction_id, reaction in model.reactions.iteritems():
-        if not 'equation' in reaction.properties:
+        if 'equation' not in reaction.properties:
             continue
 
         equation = reaction.properties['equation']
