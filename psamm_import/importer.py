@@ -328,7 +328,7 @@ def write_yaml_model(model, dest='.', convert_medium=True):
 
     model_d = OrderedDict([('name', encode_utf8(model.name))])
     if model.biomass_reaction is not None:
-        model_d['biomass'] = model.biomass_reaction
+        model_d['biomass'] = encode_utf8(model.biomass_reaction)
     if default_flux_limit is not None:
         model_d['default_flux_limit'] = default_flux_limit
     model_d.update([
