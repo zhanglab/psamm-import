@@ -26,6 +26,7 @@ import re
 import csv
 from collections import namedtuple
 import logging
+import json
 
 import xlrd
 from psamm.datasource.misc import (parse_metnet_reaction,
@@ -1813,3 +1814,91 @@ class SBMLNonstrictImporter(SBMLImporter):
                     properties['upper_flux'] = upper
 
             yield ReactionEntry(**properties)
+
+
+class CobraJSONImporter(Importer):
+    """Read metabolic model from COBRA JSON format"""
+
+    name = 'cobra-json'
+    title = 'COBRA JSON'
+
+    def help(self):
+        print('Source must contain the model definition in COBRA JSON'
+              ' format.\n'
+              'Expected files in source directory:\n'
+              '- *.json')
+
+    def _resolve_source(self, source):
+        """Resolve source to filepath if it is a directory"""
+        if os.path.isdir(source):
+            sources = glob.glob(os.path.join(source, '*.json'))
+            if len(sources) == 0:
+                raise ParseError('No .json file found in source directory')
+            elif len(sources) > 1:
+                raise ParseError(
+                    'More than one .json file found in source directory')
+            return sources[0]
+        return source
+
+    def _import(self, file):
+        model_doc = json.load(file)
+        model = MetabolicModel(
+            model_doc.get('id', 'COBRA JSON model'),
+            self._read_compounds(model_doc), self._read_reactions(model_doc))
+
+        biomass_reaction = None
+        objective_reactions = set()
+        for reaction in model_doc['reactions']:
+            if reaction.get('objective_coefficient', 0) != 0:
+                objective_reactions.add(reaction['id'])
+
+        if len(objective_reactions) == 1:
+            biomass_reaction = next(iter(objective_reactions))
+            logger.info('Detected biomass reaction: {}'.format(
+                biomass_reaction))
+        elif len(objective_reactions) > 1:
+            logger.warning(
+                'Multiple reactions are used as the'
+                ' biomass reaction: {}'.format(objective_reactions))
+
+        model.biomass_reaction = biomass_reaction
+
+        return model
+
+    def _read_compounds(self, doc):
+        for compound in doc['metabolites']:
+            id = compound['id']
+            name = compound['name']
+            charge = compound['charge']
+            formula = compound['formula']
+            yield CompoundEntry(id=id, name=name, charge=charge,
+                                formula=formula)
+
+    def _parse_reaction_equation(self, doc):
+        left, right = [], []
+        for metabolite, value in doc.iteritems():
+            if value < 0:
+                left.append((Compound(metabolite), -value))
+            elif value > 0:
+                right.append((Compound(metabolite), value))
+        return Reaction(Reaction.Bidir, left, right)
+
+    def _read_reactions(self, doc):
+        for reaction in doc['reactions']:
+            id = reaction['id']
+            name = reaction.get('name', None)
+            equation = self._parse_reaction_equation(reaction['metabolites'])
+            lower_flux = reaction.get('lower_bound')
+            upper_flux = reaction.get('upper_bound')
+            subsystem = reaction.get('subsystem')
+
+            yield ReactionEntry(id=id, name=name, equation=equation,
+                                lower_flux=lower_flux, upper_flux=upper_flux,
+                                subsystem=subsystem)
+
+    def import_model(self, source):
+        if not hasattr(source, 'read'):  # Not a File-like object
+            with open(self._resolve_source(source), 'r') as f:
+                return self._import(f)
+        else:
+            return self._import(source)
