@@ -381,7 +381,7 @@ def main():
         with open(os.path.join(dest, 'limits.yaml'), 'w+') as f:
             yaml.dump(reaction_limits, f, **yaml_args)
 
-    model_d = OrderedDict([('name', model.name)])
+    model_d = OrderedDict([('name', encode_utf8(model.name))])
     if model.biomass_reaction is not None:
         model_d['biomass'] = model.biomass_reaction
     if default_flux_limit is not None:
