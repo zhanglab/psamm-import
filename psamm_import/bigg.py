@@ -25,7 +25,7 @@ from urllib import quote
 import urllib2
 
 from .importer import write_yaml_model
-from .datasource import CobraJSONImporter
+from .datasource import cobrajson
 from .util import mkdir_p
 
 
@@ -56,7 +56,7 @@ def main():
                 result.get('bigg_id').ljust(id_width), result.get('organism')))
         sys.exit(0)
 
-    importer = CobraJSONImporter()
+    importer = cobrajson.Importer()
 
     try:
         f = urllib2.urlopen(

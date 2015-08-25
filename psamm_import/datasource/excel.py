@@ -16,166 +16,23 @@
 # Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
 # Copyright 2015  Keith Dufault-Thompson <keitht547@my.uri.edu>
 
-"""Functions related to loading models"""
-
-from __future__ import print_function
+"""Importers for various Excel formats."""
 
 import os
-import glob
 import re
 import csv
-from collections import namedtuple
-import logging
-import json
+import glob
 
 import xlrd
+
 from psamm.datasource.misc import (parse_metnet_reaction,
                                    parse_sudensimple_reaction)
-from psamm.datasource import modelseed, sbml
-from psamm.formula import Formula
+from psamm.datasource import modelseed
 from psamm.reaction import Reaction, Compound
+from psamm.formula import Formula
 
-logger = logging.getLogger(__name__)
-
-
-class _BaseEntry(object):
-    """Base entry in loaded model"""
-
-    def __init__(self, **kwargs):
-        if 'id' not in kwargs:
-            raise ValueError('No id was provided')
-        self._values = kwargs
-        self._id = self._values['id']
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def properties(self):
-        return dict(self._values)
-
-
-class CompoundEntry(_BaseEntry):
-    """Compound entry in loaded model"""
-
-    @property
-    def name(self):
-        return self._values.get('name', None)
-
-    @property
-    def formula(self):
-        return self._values.get('formula', None)
-
-    @property
-    def formula_neutral(self):
-        return self._values.get('formula_neutral', None)
-
-    @property
-    def charge(self):
-        return self._values.get('charge', None)
-
-    @property
-    def kegg(self):
-        return self._values.get('kegg', None)
-
-    @property
-    def cas(self):
-        return self._values.get('cas', None)
-
-
-class ReactionEntry(_BaseEntry):
-    """Reaction entry in loaded model"""
-
-    @property
-    def name(self):
-        return self._values.get('name', None)
-
-    @property
-    def genes(self):
-        return self._values.get('genes', None)
-
-    @property
-    def equation(self):
-        return self._values.get('equation', None)
-
-    @property
-    def subsystem(self):
-        return self._values.get('subsystem', None)
-
-    @property
-    def ec(self):
-        return self._values.get('ec', None)
-
-
-class Importer(object):
-    """Base importer class"""
-
-
-class MetabolicModel(object):
-    def __init__(self, name, compounds, reactions):
-        self._name = name
-        self._compounds = dict((c.id, c) for c in compounds)
-        self._reactions = dict((r.id, r) for r in reactions)
-        self._biomass_reaction = None
-
-        self._genes = set()
-        for r in self._reactions.itervalues():
-            if hasattr(r, 'genes') and r.genes is not None:
-                self._genes.update(r.genes)
-
-        self._check_reaction_compounds()
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def reactions(self):
-        return self._reactions
-
-    @property
-    def compounds(self):
-        return self._compounds
-
-    @property
-    def genes(self):
-        return self._genes
-
-    @property
-    def biomass_reaction(self):
-        return self._biomass_reaction
-
-    @biomass_reaction.setter
-    def biomass_reaction(self, value):
-        if value is not None and value not in self._reactions:
-            raise ValueError('Invalid reaction')
-        self._biomass_reaction = value
-
-    def print_summary(self):
-        """Print model summary"""
-        print('Model: {}'.format(self.name))
-        print('- Biomass reaction: {}'.format(self.biomass_reaction))
-        print('- Compounds: {}'.format(len(self.compounds)))
-        print('- Reactions: {}'.format(len(self.reactions)))
-        print('- Genes: {}'.format(len(self.genes)))
-
-    def _check_reaction_compounds(self):
-        """Check that reaction compounds are defined in the model"""
-        undefined = set()
-        for reaction in self.reactions.itervalues():
-            if reaction.equation is not None:
-                for compound, value in reaction.equation.compounds:
-                    if compound.name not in self.compounds:
-                        undefined.add((reaction.id, compound.name))
-
-        if len(undefined) > 0:
-            raise ParseError('Some reaction compounds are not defined in'
-                             'the model: {}'.format(undefined))
-
-
-class ParseError(Exception):
-    """Exception used to signal a parsing error"""
+from ..model import (Importer, ParseError, CompoundEntry, ReactionEntry,
+                     MetabolicModel)
 
 
 class ImportiMA945(Importer):
@@ -884,8 +741,8 @@ class ImportiSyn731(Importer):
             name = None if name == '' else name
 
             if equation.strip() != '':
-                # check that this works correctly. should substitute the => for a
-                # space then =>. the double spaces should be ignored though.
+                # check that this works correctly. should substitute the => for
+                # a space then =>. the double spaces should be ignored though.
                 equation = re.sub(r'=>', ' =>', equation)
                 equation = re.sub(r'< =>', '<=>', equation)
                 equation = re.sub(r'\s+', ' ', equation)
@@ -941,8 +798,8 @@ class ImportiCce806(Importer):
     def _read_compounds(self):
         sheet = self._compound_book.sheet_by_name('Table S2')
         for i in range(1, sheet.nrows):
-            compound_id, name, formula, charge, cas, formula_neutral, _, kegg = (
-                sheet.row_values(i))
+            (compound_id, name, formula, charge, cas, formula_neutral, _,
+                kegg) = sheet.row_values(i)
 
             if compound_id.strip() == '':
                 continue
@@ -965,7 +822,7 @@ class ImportiCce806(Importer):
             #    #formula = formula_neutral
             #else:
             #    formula_neutral = None
-           # print(formula_neutral)
+            #print(formula_neutral)
             if formula.strip() != '':
                 m = re.match(r'^(.*)-\d$', formula)
                 if m:
@@ -1087,8 +944,8 @@ class ImportGSMN_TB(Importer):
 
             #if formula_neutral.strip() != '':
             #    formula_neutral = Formula.parse(formula_neutral)
-           #     formula = formula_neutral
-           # else:
+            #    formula = formula_neutral
+            #else:
             #    formula_neutral = None
             #    if formula.strip() != '':
             #        formula = Formula.parse(formula)
@@ -1100,8 +957,8 @@ class ImportGSMN_TB(Importer):
             #except ValueError:
             #    charge = None
 
-           # cas = None if cas.strip() == '' or cas == 'None' else cas
-           # kegg = None if kegg.strip() == '' else kegg
+            #cas = None if cas.strip() == '' or cas == 'None' else cas
+            #kegg = None if kegg.strip() == '' else kegg
 
             yield CompoundEntry(id=compound_id, name=name)
 
@@ -1142,7 +999,6 @@ class ImportGSMN_TB(Importer):
         for i in range(4, sheet.nrows):
             (reaction_id, equation, fluxbound, _, ec, genes, name,
                 subsystem) = sheet.row_values(i, end_colx=8)
-
 
             if reaction_id.startswith('%') or reaction_id.strip() == '':
                 continue
@@ -1322,7 +1178,7 @@ class ImportGenericiNJ661mv(Importer):
 class ImportiNJ661m(ImportGenericiNJ661mv):
     name = 'inj661m'
     title = ('Mycobacterium tuberculosis iNJ661m (Excel format),'
-        ' Fang et al., 2010')
+             ' Fang et al., 2010')
     filename = '1752-0509-4-160-s3.xls'
 
     def import_model(self, source):
@@ -1332,7 +1188,7 @@ class ImportiNJ661m(ImportGenericiNJ661mv):
 class ImportiNJ661v(ImportGenericiNJ661mv):
     name = 'inj661v'
     title = ('Mycobacterium tuberculosis iNJ661v (Excel format),'
-        ' Fang et al., 2010')
+             ' Fang et al., 2010')
     filename = '1752-0509-4-160-s5.xls'
 
     def import_model(self, source):
@@ -1474,7 +1330,7 @@ class ImportShewanellaOng(Importer):
 class ImportiMR1_799(ImportShewanellaOng):
     name = 'imr1_799'
     title = ('Shewanella oneidensis MR-1 iMR1_799 (Excel format),'
-        ' Ong et al., 2014')
+             ' Ong et al., 2014')
 
     def import_model(self, source):
         return self.import_model_named(self.title, 0, source)
@@ -1483,7 +1339,7 @@ class ImportiMR1_799(ImportShewanellaOng):
 class ImportiMR4_812(ImportShewanellaOng):
     name = 'imr4_812'
     title = ('Shewanella sp. MR-4 iMR4_812 (Excel format),'
-        ' Ong et al., 2014')
+             ' Ong et al., 2014')
 
     def import_model(self, source):
         return self.import_model_named(self.title, 1, source)
@@ -1492,7 +1348,7 @@ class ImportiMR4_812(ImportShewanellaOng):
 class ImportiW3181_789(ImportShewanellaOng):
     name = 'iw3181_789'
     title = ('Shewanella sp. W3-18-1 iW3181_789 (Excel format),'
-        ' Ong et al., 2014')
+             ' Ong et al., 2014')
 
     def import_model(self, source):
         return self.import_model_named(self.title, 2, source)
@@ -1501,7 +1357,7 @@ class ImportiW3181_789(ImportShewanellaOng):
 class ImportiOS217_672(ImportShewanellaOng):
     name = 'ios217_672'
     title = ('Shewanella denitrificans OS217 iOS217_672 (Excel format),'
-        ' Ong et al., 2014')
+             ' Ong et al., 2014')
 
     def import_model(self, source):
         return self.import_model_named(self.title, 3, source)
@@ -1544,7 +1400,7 @@ class ImportModelSEED(Importer):
             # Read mapping from location to gene ID from PTT file
             location_mapping = {}
             for i in range(3):
-                ptt_file.readline() # Skip headers
+                ptt_file.readline()  # Skip headers
             for row in csv.reader(ptt_file, delimiter='\t'):
                 location, direction, _, _, _, gene_id = row[:6]
 
@@ -1613,7 +1469,7 @@ class ImportModelSEED(Importer):
 
             if pegs != '':
                 pegs = frozenset(m.group(0) for m in
-                                  re.finditer(r'peg\.(\d+)', pegs))
+                                 re.finditer(r'peg\.(\d+)', pegs))
                 genes = frozenset(peg_mapping[p] for p in pegs)
             else:
                 pegs = None
@@ -1632,273 +1488,3 @@ class ImportModelSEED(Importer):
 
             yield ReactionEntry(id=reaction_id, name=name, genes=genes,
                                 equation=equation, ec=ec)
-
-
-class SBMLImporter(Importer):
-    """Base importer for reading metabolic model from an SBML file"""
-
-    def help(self):
-        print('Source must contain the model definition in SBML format.\n'
-              'Expected files in source directory:\n'
-              '- *.sbml')
-
-    def _resolve_source(self, source):
-        """Resolve source to filepath if it is a directory"""
-        if os.path.isdir(source):
-            sources = glob.glob(os.path.join(source, '*.sbml'))
-            if len(sources) == 0:
-                raise ParseError('No .sbml file found in source directory')
-            elif len(sources) > 1:
-                raise ParseError(
-                    'More than one .sbml file found in source directory')
-            return sources[0]
-        return source
-
-    def _get_reader(self, f):
-        raise NotImplementedError('Subclasses must implement _get_reader()')
-
-    def import_model(self, source):
-        source = self._resolve_source(source)
-        with open(source, 'r') as f:
-            self._reader = self._open_reader(f)
-
-        model_name = 'SBML'
-        if self._reader.name is not None:
-            model_name = self._reader.name
-        elif self._reader.id is not None:
-            model_name = self._reader.id
-
-        model = MetabolicModel(
-            model_name, self._reader.species, self._reader.reactions)
-
-        return model
-
-
-class SBMLStrictImporter(SBMLImporter):
-    """Read metabolic model from an SBML file using strict parser"""
-
-    name = 'SBML-strict'
-    title = 'SBML model (strict)'
-
-    def _open_reader(self, f):
-        return sbml.SBMLReader(f, strict=True, ignore_boundary=True)
-
-
-class SBMLNonstrictImporter(SBMLImporter):
-    """Read metabolic model from an SBML file using non-strict parser"""
-
-    name = 'SBML'
-    title = 'SBML model (non-strict)'
-
-    def _open_reader(self, f):
-        return sbml.SBMLReader(f, strict=False, ignore_boundary=True)
-
-    def import_model(self, source):
-        model = super(SBMLNonstrictImporter, self).import_model(source)
-
-        biomass_reaction = None
-        objective_reactions = set()
-        flux_limits = {}
-        for reaction in self._reader.reactions:
-            # Check whether species multiple times
-            compounds = set()
-            for c, _ in reaction.equation.compounds:
-                if c.name in compounds:
-                    logger.warning(
-                        'Compound {} appears multiple times in the same'
-                        ' reaction: {}'.format(c.name, reaction.id))
-                compounds.add(c.name)
-
-            # Try to detect biomass reaction and ambiguous flux bounds
-            upper_bound = None
-            lower_bound = None
-            for parameter in reaction.kinetic_law_reaction_parameters:
-                pid, name, value, units = parameter
-                if (pid == 'OBJECTIVE_COEFFICIENT' or
-                        name == 'OBJECTIVE_COEFFICIENT'):
-                    try:
-                        value = float(value)
-                    except ValueError:
-                        continue
-                    if value != 0:
-                        objective_reactions.add(reaction.id)
-                elif pid == 'UPPER_BOUND' or name == 'UPPER_BOUND':
-                    try:
-                        value = float(value)
-                    except ValueError:
-                        continue
-                    upper_bound = value
-                elif pid == 'LOWER_BOUND' or name == 'LOWER_BOUND':
-                    try:
-                        value = float(value)
-                    except ValueError:
-                        continue
-                    lower_bound = value
-
-            if upper_bound is not None and upper_bound <= 0:
-                logger.warning('Upper bound of {} is {}'.format(
-                    reaction.id, upper_bound))
-            if (lower_bound is not None and
-                    lower_bound < 0 and not reaction.reversible):
-                logger.warning('Lower bound of irreversible reaction {} is'
-                               ' {}'.format(reaction.id, lower_bound))
-
-            flux_limits[reaction.id] = (lower_bound, upper_bound)
-
-        if len(objective_reactions) == 1:
-            biomass_reaction = next(iter(objective_reactions))
-            logger.info('Detected biomass reaction: {}'.format(
-                biomass_reaction))
-        elif len(objective_reactions) > 1:
-            logger.warning(
-                'Multiple reactions are used as the'
-                ' biomass reaction: {}'.format(objective_reactions))
-
-        model = MetabolicModel(
-            model.name,
-            self._convert_compounds(model.compounds.itervalues()),
-            self._convert_reactions(model.reactions.itervalues(),
-                                    flux_limits))
-        model.biomass_reaction = biomass_reaction
-
-        return model
-
-    def _convert_compounds(self, compounds):
-        """Convert SBML species entries to compounds"""
-        for compound in compounds:
-            properties = compound.properties
-
-            # Extract information from notes
-            if compound.xml_notes is not None:
-                for note in compound.xml_notes.itertext():
-                    m = re.match(r'FORMULA: (.+)$', note)
-                    if m:
-                        properties['formula'] = m.group(1)
-
-                    m = re.match(r'KEGG ID: (.+)$', note)
-                    if m:
-                        properties['kegg'] = m.group(1)
-
-                    m = re.match(r'PubChem ID: (.+)$', note)
-                    if m:
-                        properties['pubchem_id'] = m.group(1)
-
-                    m = re.match(r'ChEBI ID: (.+)$', note)
-                    if m:
-                        properties['chebi_id'] = m.group(1)
-
-            yield CompoundEntry(**properties)
-
-    def _convert_reactions(self, reactions, flux_limits):
-        """Convert SBML reaction entries to reactions"""
-        for reaction in reactions:
-            properties = reaction.properties
-
-            # Extract information from notes
-            if reaction.xml_notes is not None:
-                for note in reaction.xml_notes.itertext():
-                    m = re.match(r'SUBSYSTEM: (.+)$', note)
-                    if m:
-                        properties['subsystem'] = m.group(1)
-
-                    m = re.match(r'GENE_ASSOCIATION: (.+)$', note)
-                    if m:
-                        properties['gene_association'] = m.group(1)
-
-            # Extract flux limits
-            if reaction.id in flux_limits:
-                lower, upper = flux_limits[reaction.id]
-                if lower is not None:
-                    properties['lower_flux'] = lower
-                if upper is not None:
-                    properties['upper_flux'] = upper
-
-            yield ReactionEntry(**properties)
-
-
-class CobraJSONImporter(Importer):
-    """Read metabolic model from COBRA JSON format"""
-
-    name = 'cobra-json'
-    title = 'COBRA JSON'
-
-    def help(self):
-        print('Source must contain the model definition in COBRA JSON'
-              ' format.\n'
-              'Expected files in source directory:\n'
-              '- *.json')
-
-    def _resolve_source(self, source):
-        """Resolve source to filepath if it is a directory"""
-        if os.path.isdir(source):
-            sources = glob.glob(os.path.join(source, '*.json'))
-            if len(sources) == 0:
-                raise ParseError('No .json file found in source directory')
-            elif len(sources) > 1:
-                raise ParseError(
-                    'More than one .json file found in source directory')
-            return sources[0]
-        return source
-
-    def _import(self, file):
-        model_doc = json.load(file)
-        model = MetabolicModel(
-            model_doc.get('id', 'COBRA JSON model'),
-            self._read_compounds(model_doc), self._read_reactions(model_doc))
-
-        biomass_reaction = None
-        objective_reactions = set()
-        for reaction in model_doc['reactions']:
-            if reaction.get('objective_coefficient', 0) != 0:
-                objective_reactions.add(reaction['id'])
-
-        if len(objective_reactions) == 1:
-            biomass_reaction = next(iter(objective_reactions))
-            logger.info('Detected biomass reaction: {}'.format(
-                biomass_reaction))
-        elif len(objective_reactions) > 1:
-            logger.warning(
-                'Multiple reactions are used as the'
-                ' biomass reaction: {}'.format(objective_reactions))
-
-        model.biomass_reaction = biomass_reaction
-
-        return model
-
-    def _read_compounds(self, doc):
-        for compound in doc['metabolites']:
-            id = compound['id']
-            name = compound.get('name')
-            charge = compound.get('charge')
-            formula = compound.get('formula')
-            yield CompoundEntry(id=id, name=name, charge=charge,
-                                formula=formula)
-
-    def _parse_reaction_equation(self, doc):
-        left, right = [], []
-        for metabolite, value in doc.iteritems():
-            if value < 0:
-                left.append((Compound(metabolite), -value))
-            elif value > 0:
-                right.append((Compound(metabolite), value))
-        return Reaction(Reaction.Bidir, left, right)
-
-    def _read_reactions(self, doc):
-        for reaction in doc['reactions']:
-            id = reaction['id']
-            name = reaction.get('name', None)
-            equation = self._parse_reaction_equation(reaction['metabolites'])
-            lower_flux = reaction.get('lower_bound')
-            upper_flux = reaction.get('upper_bound')
-            subsystem = reaction.get('subsystem')
-
-            yield ReactionEntry(id=id, name=name, equation=equation,
-                                lower_flux=lower_flux, upper_flux=upper_flux,
-                                subsystem=subsystem)
-
-    def import_model(self, source):
-        if not hasattr(source, 'read'):  # Not a File-like object
-            with open(self._resolve_source(source), 'r') as f:
-                return self._import(f)
-        else:
-            return self._import(source)
