@@ -24,6 +24,8 @@ import logging
 from collections import OrderedDict, Counter
 
 import yaml
+from six import iteritems
+
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction
 
