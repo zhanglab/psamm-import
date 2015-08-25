@@ -36,6 +36,30 @@ setup(
         'console_scripts': [
             'psamm-import = psamm_import.importer:main',
             'psamm-import-bigg = psamm_import.bigg:main'
+        ],
+        'psamm.importer': [
+            'iMA945 = psamm_import.datasource.excel:ImportiMA945',
+            'iRR1083 = psamm_import.datasource.excel:ImportiRR1083',
+            'iJO1366 = psamm_import.datasource.excel:ImportiJO1366',
+            'EColi_textbook ='
+            ' psamm_import.datasource.excel:EColiTextbookImport',
+            'STM_v1.0 = psamm_import.datasource.excel:ImportSTMv1_0',
+            'iJN746 = psamm_import.datasource.excel:ImportiJN746',
+            'iJP815 = psamm_import.datasource.excel:ImportiJP815',
+            'iSyn731 = psamm_import.datasource.excel:ImportiSyn731',
+            'iCce806 = psamm_import.datasource.excel:ImportiCce806',
+            'GSMN-TB = psamm_import.datasource.excel:ImportGSMN_TB',
+            'iNJ661 = psamm_import.datasource.excel:ImportiNJ661',
+            'iNJ661m = psamm_import.datasource.excel:ImportiNJ661m',
+            'iNJ661v = psamm_import.datasource.excel:ImportiNJ661v',
+            'iMR1_799 = psamm_import.datasource.excel:ImportiMR1_799',
+            'iMR4_812 = psamm_import.datasource.excel:ImportiMR4_812',
+            'iW3181_789 = psamm_import.datasource.excel:ImportiW3181_789',
+            'iOS217_672 = psamm_import.datasource.excel:ImportiOS217_672',
+            'ModelSEED = psamm_import.datasource.excel:ImportModelSEED',
+            'SBML-strict = psamm_import.datasource.sbml:StrictImporter',
+            'SBML = psamm_import.datasource.sbml:NonstrictImporter',
+            'COBRA-JSON = psamm_import.datasource.cobrajson:Importer'
         ]
     },
 
