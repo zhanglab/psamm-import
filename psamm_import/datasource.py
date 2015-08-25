@@ -1868,9 +1868,9 @@ class CobraJSONImporter(Importer):
     def _read_compounds(self, doc):
         for compound in doc['metabolites']:
             id = compound['id']
-            name = compound['name']
-            charge = compound['charge']
-            formula = compound['formula']
+            name = compound.get('name')
+            charge = compound.get('charge')
+            formula = compound.get('formula')
             yield CompoundEntry(id=id, name=name, charge=charge,
                                 formula=formula)
 
