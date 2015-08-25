@@ -24,12 +24,12 @@ import logging
 from collections import OrderedDict, Counter
 
 import yaml
+import pkg_resources
 from six import iteritems
 
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction
 
-from .datasource import Importer
 from .util import mkdir_p
 
 
@@ -45,14 +45,6 @@ def dict_representer(dumper, data):
 
 def dict_constructor(loader, node):
     return OrderedDict(loader.construct_pairs(node))
-
-
-def recursive_subclasses(cls):
-    """Yield all subclasses of a class recursively"""
-    for subclass in cls.__subclasses__():
-        for subsubclass in recursive_subclasses(subclass):
-            yield subsubclass
-        yield subclass
 
 
 def encode_utf8(s):
@@ -364,14 +356,13 @@ def main():
 
     # Discover all available model importers
     importers = {}
-    for importer_class in recursive_subclasses(Importer):
-        importer_name = getattr(importer_class, 'name', None)
-        importer_title = getattr(importer_class, 'title', None)
-        if (importer_name is not None and
-                importer_title is not None):
-            canonical = importer_name.lower()
-            if canonical not in importers:
-                importers[canonical] = importer_class
+    for importer_entry in pkg_resources.iter_entry_points('psamm.importer'):
+        canonical = importer_entry.name.lower()
+        if canonical not in importers:
+            importers[canonical] = importer_entry
+        else:
+            logger.warning('Importer {} was found more than once!'.format(
+                importer_entry.name))
 
     # Print list of importers
     if args.format in ('list', 'help'):
@@ -379,9 +370,15 @@ def main():
         if len(importers) == 0:
             logger.error('No importers found!')
         else:
-            for name, importer_class in sorted(importers.iteritems(),
-                                               key=lambda x: x[1].title):
-                print('{:<10}  {}'.format(name, importer_class.title))
+            importer_classes = []
+            for name, entry in iteritems(importers):
+                importer_class = entry.load()
+                title = getattr(importer_class, 'title', None)
+                if title is not None:
+                    importer_classes.append((title, name, importer_class))
+
+            for title, name, importer_class in sorted(importer_classes):
+                print('{:<10}  {}'.format(name, title))
         sys.exit(0)
 
     importer_name = args.format.lower()
@@ -390,7 +387,8 @@ def main():
         logger.info('Use "list" to see available importers.')
         sys.exit(-1)
 
-    importer = importers[importer_name]()
+    importer_class = importers[importer_name].load()
+    importer = importer_class()
 
     try:
         model = importer.import_model(args.source)

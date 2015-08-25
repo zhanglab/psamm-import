@@ -36,6 +36,29 @@ setup(
         'console_scripts': [
             'psamm-import = psamm_import.importer:main',
             'psamm-import-bigg = psamm_import.bigg:main'
+        ],
+        'psamm.importer': [
+            'iMA945 = psamm_import.datasource:ImportiMA945',
+            'iRR1083 = psamm_import.datasource:ImportiRR1083',
+            'iJO1366 = psamm_import.datasource:ImportiJO1366',
+            'EColi_textbook = psamm_import.datasource:EColiTextbookImport',
+            'STM_v1.0 = psamm_import.datasource:ImportSTMv1_0',
+            'iJN746 = psamm_import.datasource:ImportiJN746',
+            'iJP815 = psamm_import.datasource:ImportiJP815',
+            'iSyn731 = psamm_import.datasource:ImportiSyn731',
+            'iCce806 = psamm_import.datasource:ImportiCce806',
+            'GSMN-TB = psamm_import.datasource:ImportGSMN_TB',
+            'iNJ661 = psamm_import.datasource:ImportiNJ661',
+            'iNJ661m = psamm_import.datasource:ImportiNJ661m',
+            'iNJ661v = psamm_import.datasource:ImportiNJ661v',
+            'iMR1_799 = psamm_import.datasource:ImportiMR1_799',
+            'iMR4_812 = psamm_import.datasource:ImportiMR4_812',
+            'iW3181_789 = psamm_import.datasource:ImportiW3181_789',
+            'iOS217_672 = psamm_import.datasource:ImportiOS217_672',
+            'ModelSEED = psamm_import.datasource:ImportModelSEED',
+            'SBML-strict = psamm_import.datasource:SBMLStrictImporter',
+            'SBML = psamm_import.datasource:SBMLNonstrictImporter',
+            'COBRA-JSON = psamm_import.datasource:CobraJSONImporter'
         ]
     },
 
