@@ -1,11 +1,14 @@
 PSAMM model importers
 =====================
 
-PSAMM_ is a set of tools related to metabolic modeling, reconstruction, data
-parsing and formatting, consistency checking, automatic gap filling, and model
-simulations. The PSAMM model importers in this repository is collection of
-tools that allow metabolic models to be converted from various formats to the
-internal YAML-based format used by PSAMM.
+PSAMM_ is an open source software that is designed for the curation and
+analysis of metabolic models. It supports model version tracking, model
+annotation, data integration, data parsing and formatting, consistency
+checking, automatic gap filling, and model simulations.
+
+The PSAMM model importers in this repository is collection of tools that allow
+metabolic models to be converted from various formats to the internal
+YAML-based format used by PSAMM.
 
 The ``master`` branch tracks the latest release while the ``develop`` branch is
 the latest version in development. Please apply any pull requests to the
