@@ -24,8 +24,8 @@ import logging
 
 from psamm.datasource import sbml
 
-from ..model import (Importer, ParseError, CompoundEntry, ReactionEntry,
-                     MetabolicModel)
+from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
+                     ReactionEntry, MetabolicModel)
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,9 @@ class BaseImporter(Importer):
         if os.path.isdir(source):
             sources = glob.glob(os.path.join(source, '*.sbml'))
             if len(sources) == 0:
-                raise ParseError('No .sbml file found in source directory')
+                raise ModelLoadError('No .sbml file found in source directory')
             elif len(sources) > 1:
-                raise ParseError(
+                raise ModeLoadError(
                     'More than one .sbml file found in source directory')
             return sources[0]
         return source
