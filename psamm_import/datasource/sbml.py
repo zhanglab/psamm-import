@@ -77,7 +77,10 @@ class StrictImporter(BaseImporter):
     title = 'SBML model (strict)'
 
     def _open_reader(self, f):
-        return sbml.SBMLReader(f, strict=True, ignore_boundary=True)
+        try:
+            return sbml.SBMLReader(f, strict=True, ignore_boundary=True)
+        except sbml.ParseError as e:
+            raise ParseError(e)
 
 
 class NonstrictImporter(BaseImporter):
@@ -87,7 +90,10 @@ class NonstrictImporter(BaseImporter):
     title = 'SBML model (non-strict)'
 
     def _open_reader(self, f):
-        return sbml.SBMLReader(f, strict=False, ignore_boundary=True)
+        try:
+            return sbml.SBMLReader(f, strict=False, ignore_boundary=True)
+        except sbml.ParseError as e:
+            raise ParseError(e)
 
     def import_model(self, source):
         model = super(NonstrictImporter, self).import_model(source)
