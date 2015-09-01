@@ -19,37 +19,33 @@
 
 import sys
 import os
-import errno
 import argparse
 import logging
 from collections import OrderedDict, Counter
 
 import yaml
+import pkg_resources
+from six import iteritems
+
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction
 
-from .datasource import Importer
+from .util import mkdir_p
+from .model import ParseError, ModelLoadError
+
 
 logger = logging.getLogger(__name__)
 
 
 # Define custom dict representers for YAML
 # This allows reading/writing Python OrderedDicts in the correct order.
-# See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
+# See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts  # noqa
 def dict_representer(dumper, data):
     return dumper.represent_dict(data.iteritems())
 
 
 def dict_constructor(loader, node):
     return OrderedDict(loader.construct_pairs(node))
-
-
-def recursive_subclasses(cls):
-    """Yield all subclasses of a class recursively"""
-    for subclass in cls.__subclasses__():
-        for subsubclass in recursive_subclasses(subclass):
-            yield subsubclass
-        yield subclass
 
 
 def encode_utf8(s):
@@ -69,7 +65,7 @@ def detect_best_flux_limit(model):
     flux_limit_count = Counter()
 
     for reaction_id, reaction in model.reactions.iteritems():
-        if not 'equation' in reaction.properties:
+        if 'equation' not in reaction.properties:
             continue
 
         equation = reaction.properties['equation']
@@ -284,68 +280,12 @@ def model_reaction_limits(model, exchange=False, default_flux_limit=None):
             yield d
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='Import from external model formats')
-    parser.add_argument('--source', metavar='path', default='.',
-                        help='Source directory or file')
-    parser.add_argument('--dest', metavar='path', default='.',
-                        help='Destination directory (default is ".")')
-    parser.add_argument('--no-medium', action='store_true',
-                        help='Disable importing exchange reactions as medium')
-    parser.add_argument('format', help='Format to import ("list" to see all)')
+def write_yaml_model(model, dest='.', convert_medium=True):
+    """Write the given MetabolicModel to YAML files in dest folder
 
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO)
-
-    # Discover all available model importers
-    importers = {}
-    for importer_class in recursive_subclasses(Importer):
-        importer_name = getattr(importer_class, 'name', None)
-        importer_title = getattr(importer_class, 'title', None)
-        if (importer_name is not None and
-                importer_title is not None):
-            canonical = importer_name.lower()
-            if canonical not in importers:
-                importers[canonical] = importer_class
-
-    # Print list of importers
-    if args.format in ('list', 'help'):
-        print('Available importers:')
-        if len(importers) == 0:
-            logger.error('No importers found!')
-        else:
-            for name, importer_class in sorted(importers.iteritems(),
-                                               key=lambda x: x[1].title):
-                print('{:<10}  {}'.format(name, importer_class.title))
-        sys.exit(0)
-
-    importer_name = args.format.lower()
-    if importer_name not in importers:
-        logger.error('Importer {} not found!'.format(importer_name))
-        logger.info('Use "list" to see available importers.')
-        sys.exit(-1)
-
-    importer = importers[importer_name]()
-
-    try:
-        model = importer.import_model(args.source)
-    except:
-        logger.error('Failed to load model!', exc_info=True)
-        importer.help()
-        sys.exit(-1)
-
-    model.print_summary()
-
-    # Create destination directory if not exists
-    dest = args.dest
-    try:
-        os.makedirs(dest)
-    except OSError as e:
-        if e.errno != errno.EEXIST or not os.path.isdir(dest):
-            raise
-
+    The parameter ``convert_medium`` indicates whether the exchange reactions
+    should be converted automatically to a medium file.
+    """
     yaml.add_representer(OrderedDict, dict_representer)
     yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                          dict_constructor)
@@ -363,15 +303,15 @@ def main():
         logger.info('Using default flux limit of {}'.format(
             default_flux_limit))
 
-    if not args.no_medium:
+    if convert_medium:
         logger.info('Converting exchange reactions to medium definition')
 
-    exchange = args.no_medium
+    exchange = not convert_medium
     with open(os.path.join(dest, 'reactions.yaml'), 'w+') as f:
         reactions = list(model_reactions(model, exchange=exchange))
         yaml.dump(reactions, f, **yaml_args)
 
-    if not args.no_medium:
+    if convert_medium:
         with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
             yaml.dump(model_medium(model, default_flux_limit), f, **yaml_args)
 
@@ -381,16 +321,16 @@ def main():
         with open(os.path.join(dest, 'limits.yaml'), 'w+') as f:
             yaml.dump(reaction_limits, f, **yaml_args)
 
-    model_d = OrderedDict([('name', model.name)])
+    model_d = OrderedDict([('name', encode_utf8(model.name))])
     if model.biomass_reaction is not None:
-        model_d['biomass'] = model.biomass_reaction
+        model_d['biomass'] = encode_utf8(model.biomass_reaction)
     if default_flux_limit is not None:
         model_d['default_flux_limit'] = default_flux_limit
     model_d.update([
         ('compounds', [{'include': 'compounds.yaml'}]),
         ('reactions', [{'include': 'reactions.yaml'}])])
 
-    if not args.no_medium:
+    if convert_medium:
         model_d['media'] = [{'include': 'medium.yaml'}]
 
     if len(reaction_limits) > 0:
@@ -398,3 +338,74 @@ def main():
 
     with open(os.path.join(dest, 'model.yaml'), 'w+') as f:
         yaml.dump(model_d, f, **yaml_args)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Import from external model formats')
+    parser.add_argument('--source', metavar='path', default='.',
+                        help='Source directory or file')
+    parser.add_argument('--dest', metavar='path', default='.',
+                        help='Destination directory (default is ".")')
+    parser.add_argument('--no-medium', action='store_true',
+                        help='Disable importing exchange reactions as medium')
+    parser.add_argument('format', help='Format to import ("list" to see all)')
+
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
+
+    # Discover all available model importers
+    importers = {}
+    for importer_entry in pkg_resources.iter_entry_points('psamm.importer'):
+        canonical = importer_entry.name.lower()
+        if canonical not in importers:
+            importers[canonical] = importer_entry
+        else:
+            logger.warning('Importer {} was found more than once!'.format(
+                importer_entry.name))
+
+    # Print list of importers
+    if args.format in ('list', 'help'):
+        print('Available importers:')
+        if len(importers) == 0:
+            logger.error('No importers found!')
+        else:
+            importer_classes = []
+            for name, entry in iteritems(importers):
+                importer_class = entry.load()
+                title = getattr(importer_class, 'title', None)
+                if title is not None:
+                    importer_classes.append((title, name, importer_class))
+
+            for title, name, importer_class in sorted(importer_classes):
+                print('{:<10}  {}'.format(name, title))
+        sys.exit(0)
+
+    importer_name = args.format.lower()
+    if importer_name not in importers:
+        logger.error('Importer {} not found!'.format(importer_name))
+        logger.info('Use "list" to see available importers.')
+        sys.exit(-1)
+
+    importer_class = importers[importer_name].load()
+    importer = importer_class()
+
+    try:
+        model = importer.import_model(args.source)
+    except ModelLoadError as e:
+        logger.error('Failed to load model!', exc_info=True)
+        importer.help()
+        parser.error(str(e))
+    except ParseError as e:
+        logger.error('Failed to parse model!', exc_info=True)
+        logger.error(str(e))
+        sys.exit(-1)
+
+    model.print_summary()
+
+    # Create destination directory if not exists
+    dest = args.dest
+    mkdir_p(dest)
+
+    write_yaml_model(model, dest, convert_medium=not args.no_medium)
