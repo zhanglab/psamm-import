@@ -22,8 +22,16 @@ result of parsing a model before it is converted to YAML format.
 """
 
 
-class ParseError(Exception):
-    """Exception used to signal a parsing error."""
+class ImportError(Exception):
+    """Exception used to signal a general import error."""
+
+
+class ModelLoadError(ImportError):
+    """Exception used to signal an error loading the model files."""
+
+
+class ParseError(ImportError):
+    """Exception used to signal an error parsing the model files."""
 
 
 class _BaseEntry(object):

@@ -31,6 +31,7 @@ from psamm.datasource import modelseed
 from psamm.reaction import Reaction
 
 from .util import mkdir_p
+from .model import ParseError, ModelLoadError
 
 
 logger = logging.getLogger(__name__)
@@ -392,9 +393,13 @@ def main():
 
     try:
         model = importer.import_model(args.source)
-    except:
+    except ModelLoadError as e:
         logger.error('Failed to load model!', exc_info=True)
         importer.help()
+        parser.error(str(e))
+    except ParseError as e:
+        logger.error('Failed to parse model!', exc_info=True)
+        logger.error(str(e))
         sys.exit(-1)
 
     model.print_summary()
