@@ -177,6 +177,10 @@ class NonstrictImporter(BaseImporter):
                     if m:
                         properties['formula'] = m.group(1)
 
+                    m = re.match(r'CHARGE: (.+)$', note)
+                    if m:
+                        properties['charge'] = m.group(1)
+
                     m = re.match(r'KEGG ID: (.+)$', note)
                     if m:
                         properties['kegg'] = m.group(1)
