@@ -24,7 +24,7 @@ import logging
 
 from psamm.reaction import Reaction, Compound
 
-from ..model import (Importer as BaseImporter,
+from ..model import (Importer as BaseImporter, ModelLoadError,
                      ParseError, CompoundEntry, ReactionEntry, MetabolicModel)
 
 logger = logging.getLogger(__name__)
@@ -47,9 +47,9 @@ class Importer(BaseImporter):
         if os.path.isdir(source):
             sources = glob.glob(os.path.join(source, '*.json'))
             if len(sources) == 0:
-                raise ParseError('No .json file found in source directory')
+                raise ModelLoadError('No .json file found in source directory')
             elif len(sources) > 1:
-                raise ParseError(
+                raise ModelLoadError(
                     'More than one .json file found in source directory')
             return sources[0]
         return source

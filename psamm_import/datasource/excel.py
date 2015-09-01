@@ -31,8 +31,8 @@ from psamm.datasource import modelseed
 from psamm.reaction import Reaction, Compound
 from psamm.formula import Formula
 
-from ..model import (Importer, ParseError, CompoundEntry, ReactionEntry,
-                     MetabolicModel)
+from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
+                     ReactionEntry, MetabolicModel)
 
 
 class ImportiMA945(Importer):
@@ -503,7 +503,7 @@ class ImportiJN746(Importer):
             compound_source = os.path.join(source, self.filenames[0])
             reaction_source = os.path.join(source, self.filenames[1])
         else:
-            raise ParseError('Source must be a directory')
+            raise ModelLoadError('Source must be a directory')
 
         self._compound_book = xlrd.open_workbook(compound_source)
         self._reaction_book = xlrd.open_workbook(reaction_source)
@@ -784,7 +784,7 @@ class ImportiCce806(Importer):
             reaction_source = os.path.join(source, self.filenames[0])
             compound_source = os.path.join(source, self.filenames[1])
         else:
-            raise ParseError('Source must be a directory')
+            raise ModelLoadError('Source must be a directory')
 
         self._compound_book = xlrd.open_workbook(compound_source)
         self._reaction_book = xlrd.open_workbook(reaction_source)
@@ -916,7 +916,7 @@ class ImportGSMN_TB(Importer):
             reaction_source = os.path.join(source, self.filenames[0])
             compound_source = os.path.join(source, self.filenames[1])
         else:
-            raise ParseError('Source must be a directory')
+            raise ModelLoadError('Source must be a directory')
 
         self._compound_book = xlrd.open_workbook(compound_source)
         self._reaction_book = xlrd.open_workbook(reaction_source)
@@ -1378,20 +1378,20 @@ class ImportModelSEED(Importer):
 
     def import_model(self, source):
         if not os.path.isdir(source):
-            raise ParseError('Source must be a directory')
+            raise ModelLoadError('Source must be a directory')
 
         excel_sources = glob.glob(os.path.join(source, 'Seed*.xls'))
         if len(excel_sources) == 0:
-            raise ParseError('No .xls file found in source directory')
+            raise ModelLoadError('No .xls file found in source directory')
         elif len(excel_sources) > 1:
-            raise ParseError(
+            raise ModelLoadError(
                 'More than one .xls file found in source directory')
 
         ptt_sources = glob.glob(os.path.join(source, '*.ptt'))
         if len(ptt_sources) == 0:
-            raise ParseError('No .ptt file found in source directory')
+            raise ModelLoadError('No .ptt file found in source directory')
         elif len(ptt_sources) > 1:
-            raise ParseError(
+            raise ModelLoadError(
                 'More than one .ptt file found in source directory')
 
         self._book = xlrd.open_workbook(excel_sources[0])
