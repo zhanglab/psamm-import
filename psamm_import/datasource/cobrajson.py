@@ -35,6 +35,7 @@ class Importer(BaseImporter):
 
     name = 'cobra-json'
     title = 'COBRA JSON'
+    generic = True
 
     def help(self):
         print('Source must contain the model definition in COBRA JSON'

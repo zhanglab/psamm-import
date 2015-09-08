@@ -75,6 +75,7 @@ class StrictImporter(BaseImporter):
 
     name = 'SBML-strict'
     title = 'SBML model (strict)'
+    generic = True
 
     def _open_reader(self, f):
         try:
@@ -88,6 +89,7 @@ class NonstrictImporter(BaseImporter):
 
     name = 'SBML'
     title = 'SBML model (non-strict)'
+    generic = True
 
     def _open_reader(self, f):
         try:
