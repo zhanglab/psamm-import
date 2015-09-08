@@ -17,6 +17,8 @@
 
 """Generic native model importer"""
 
+from __future__ import print_function
+
 import sys
 import os
 import argparse
@@ -367,7 +369,6 @@ def main():
 
     # Print list of importers
     if args.format in ('list', 'help'):
-        print('Available importers:')
         if len(importers) == 0:
             logger.error('No importers found!')
         else:
@@ -375,11 +376,21 @@ def main():
             for name, entry in iteritems(importers):
                 importer_class = entry.load()
                 title = getattr(importer_class, 'title', None)
+                generic = getattr(importer_class, 'generic', False)
                 if title is not None:
-                    importer_classes.append((title, name, importer_class))
+                    importer_classes.append(
+                        (title, generic, name, importer_class))
 
-            for title, name, importer_class in sorted(importer_classes):
-                print('{:<10}  {}'.format(name, title))
+            print('Generic importers:')
+            for title, _, name, importer_class in sorted(
+                    c for c in importer_classes if c[1]):
+                print('{:<12}  {}'.format(name, title))
+
+            print()
+            print('Model-specific importers:')
+            for title, _, name, importer_class in sorted(
+                    c for c in importer_classes if not c[1]):
+                print('{:<12}  {}'.format(name, title))
         sys.exit(0)
 
     importer_name = args.format.lower()
