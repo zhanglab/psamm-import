@@ -1368,6 +1368,7 @@ class ImportModelSEED(Importer):
 
     name = 'ModelSEED'
     title = 'ModelSEED model (Excel format)'
+    generic = True
 
     def help(self):
         print('Source must contain the model definition in Excel format\n'
