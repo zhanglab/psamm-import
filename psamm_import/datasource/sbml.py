@@ -181,7 +181,13 @@ class NonstrictImporter(BaseImporter):
 
                     m = re.match(r'CHARGE: (.+)$', note)
                     if m:
-                        properties['charge'] = m.group(1)
+                        value = m.group(1)
+                        try:
+                            properties['charge'] = int(value)
+                        except ValueError:
+                            logger.warning(
+                                'Unable to parse charge value for {} as an'
+                                ' interger: {}'.format(compound.id, value))
 
                     m = re.match(r'KEGG ID: (.+)$', note)
                     if m:
