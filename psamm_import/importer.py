@@ -355,7 +355,14 @@ def main():
 
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    # Set up logging for the command line interface
+    if 'PSAMM_DEBUG' in os.environ:
+        level = getattr(logging, os.environ['PSAMM_DEBUG'].upper(), None)
+        if level is not None:
+            logging.basicConfig(level=level)
+    else:
+        logging.basicConfig(
+            level=logging.INFO, format='%(levelname)s: %(message)s')
 
     # Discover all available model importers
     importers = {}
