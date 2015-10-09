@@ -59,7 +59,7 @@ setup(
             'ModelSEED = psamm_import.datasource.excel:ImportModelSEED',
             'SBML-strict = psamm_import.datasource.sbml:StrictImporter',
             'SBML = psamm_import.datasource.sbml:NonstrictImporter',
-            'COBRA-JSON = psamm_import.datasource.cobrajson:Importer'
+            'JSON = psamm_import.datasource.cobrajson:Importer'
         ]
     },
 

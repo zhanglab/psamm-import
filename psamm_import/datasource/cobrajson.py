@@ -15,7 +15,7 @@
 #
 # Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
-"""Importer for the COBRA JSON format."""
+"""Importer for the COBRApy JSON format."""
 
 import os
 import glob
@@ -31,14 +31,14 @@ logger = logging.getLogger(__name__)
 
 
 class Importer(BaseImporter):
-    """Read metabolic model from COBRA JSON format"""
+    """Read metabolic model from COBRApy JSON format"""
 
-    name = 'cobra-json'
-    title = 'COBRA JSON'
+    name = 'json'
+    title = 'COBRApy JSON'
     generic = True
 
     def help(self):
-        print('Source must contain the model definition in COBRA JSON'
+        print('Source must contain the model definition in COBRApy JSON'
               ' format.\n'
               'Expected files in source directory:\n'
               '- *.json')
