@@ -240,12 +240,12 @@ class NonstrictImporter(BaseImporter):
                     if m:
                         properties['gene_association'] = m.group(1)
 
-            # Extract flux limits
+            # Extract flux limits provided in parameters
             if reaction.id in flux_limits:
                 lower, upper = flux_limits[reaction.id]
-                if lower is not None:
+                if properties.get('lower_flux') is None and lower is not None:
                     properties['lower_flux'] = lower
-                if upper is not None:
+                if properties.get('upper_flux') is None and upper is not None:
                     properties['upper_flux'] = upper
 
             yield ReactionEntry(**properties)
