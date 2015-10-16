@@ -22,6 +22,8 @@ import re
 import glob
 import logging
 
+from six import iteritems
+
 from psamm.datasource import sbml
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
@@ -67,6 +69,25 @@ class BaseImporter(Importer):
         model = MetabolicModel(
             model_name, self._reader.species, self._reader.reactions)
 
+        objective = self._reader.get_active_objective()
+        if objective is not None:
+            reactions = dict(objective.reactions)
+            if len(reactions) != 1:
+                logger.warning(
+                    'Cannot convert objective {} since it does not'
+                    ' consist of a single reaction'.format(objective.id))
+            else:
+                reaction, value = next(iteritems(reactions))
+                if ((value > 0 and objective.type == 'minimize') or
+                        (value < 0 and objective.type == 'maximize')):
+                    logger.warning(
+                        'Cannot convert objective {} since it is not a'
+                        ' maximization objective'.format(objective.id))
+                else:
+                    logger.info('Detected biomass reaction: {}'.format(
+                        reaction))
+                    model.biomass_reaction = reaction
+
         return model
 
 
@@ -75,6 +96,7 @@ class StrictImporter(BaseImporter):
 
     name = 'SBML-strict'
     title = 'SBML model (strict)'
+    generic = True
 
     def _open_reader(self, f):
         try:
@@ -88,6 +110,7 @@ class NonstrictImporter(BaseImporter):
 
     name = 'SBML'
     title = 'SBML model (non-strict)'
+    generic = True
 
     def _open_reader(self, f):
         try:
@@ -98,9 +121,9 @@ class NonstrictImporter(BaseImporter):
     def import_model(self, source):
         model = super(NonstrictImporter, self).import_model(source)
 
-        biomass_reaction = None
         objective_reactions = set()
         flux_limits = {}
+        biomass_reaction = model.biomass_reaction
         for reaction in self._reader.reactions:
             # Check whether species multiple times
             compounds = set()
@@ -179,7 +202,13 @@ class NonstrictImporter(BaseImporter):
 
                     m = re.match(r'CHARGE: (.+)$', note)
                     if m:
-                        properties['charge'] = m.group(1)
+                        value = m.group(1)
+                        try:
+                            properties['charge'] = int(value)
+                        except ValueError:
+                            logger.warning(
+                                'Unable to parse charge value for {} as an'
+                                ' interger: {}'.format(compound.id, value))
 
                     m = re.match(r'KEGG ID: (.+)$', note)
                     if m:
@@ -211,12 +240,12 @@ class NonstrictImporter(BaseImporter):
                     if m:
                         properties['gene_association'] = m.group(1)
 
-            # Extract flux limits
+            # Extract flux limits provided in parameters
             if reaction.id in flux_limits:
                 lower, upper = flux_limits[reaction.id]
-                if lower is not None:
+                if properties.get('lower_flux') is None and lower is not None:
                     properties['lower_flux'] = lower
-                if upper is not None:
+                if properties.get('upper_flux') is None and upper is not None:
                     properties['upper_flux'] = upper
 
             yield ReactionEntry(**properties)

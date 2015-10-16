@@ -20,7 +20,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='psamm-import',
-    version='0.5',
+    version='0.6',
     description='PSAMM model importers',
     maintainer='Jon Lund Steffensen',
     maintainer_email='jon_steffensen@uri.edu',
@@ -59,7 +59,7 @@ setup(
             'ModelSEED = psamm_import.datasource.excel:ImportModelSEED',
             'SBML-strict = psamm_import.datasource.sbml:StrictImporter',
             'SBML = psamm_import.datasource.sbml:NonstrictImporter',
-            'COBRA-JSON = psamm_import.datasource.cobrajson:Importer'
+            'JSON = psamm_import.datasource.cobrajson:Importer'
         ]
     },
 
