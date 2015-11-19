@@ -30,6 +30,7 @@ from psamm.datasource.misc import (parse_metnet_reaction,
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction, Compound
 from psamm.formula import Formula
+from psamm.expression import boolean
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
                      ReactionEntry, MetabolicModel)
@@ -292,8 +293,7 @@ class ImportiJO1366(Importer):
                 continue
 
             if genes != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'[sb]\d+', genes))
+                genes = boolean.Expression(genes)
             else:
                 genes = None
 
