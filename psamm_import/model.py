@@ -23,6 +23,8 @@ result of parsing a model before it is converted to YAML format.
 
 from six import itervalues
 
+from psamm.expression import boolean
+
 
 class ImportError(Exception):
     """Exception used to signal a general import error."""
@@ -116,7 +118,10 @@ class MetabolicModel(object):
         self._genes = set()
         for r in itervalues(self._reactions):
             if hasattr(r, 'genes') and r.genes is not None:
-                self._genes.update(r.genes)
+                if isinstance(r.genes, boolean.Expression):
+                    self._genes.update(g.symbol for g in r.genes.variables)
+                else:
+                    self._genes.update(r.genes)
 
         self._check_reaction_compounds()
 
