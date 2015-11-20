@@ -208,7 +208,7 @@ class NonstrictImporter(BaseImporter):
                         except ValueError:
                             logger.warning(
                                 'Unable to parse charge value for {} as an'
-                                ' interger: {}'.format(compound.id, value))
+                                ' integer: {}'.format(compound.id, value))
 
                     m = re.match(r'KEGG ID: (.+)$', note)
                     if m:
