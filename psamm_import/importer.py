@@ -27,7 +27,7 @@ from collections import OrderedDict, Counter
 
 import yaml
 import pkg_resources
-from six import iteritems
+from six import iteritems, text_type
 
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction
@@ -100,11 +100,11 @@ def model_compounds(model):
 
         formula = compound.properties.get('formula')
         if formula is not None:
-            d['formula'] = str(formula)
+            d['formula'] = encode_utf8(text_type(formula))
 
         formula_neutral = compound.properties.get('formula_neutral')
         if formula_neutral is not None:
-            d['formula_neutral'] = str(formula_neutral)
+            d['formula_neutral'] = encode_utf8(text_type(formula_neutral))
 
         charge = compound.properties.get('charge')
         if charge is not None:
@@ -362,7 +362,7 @@ def main():
             logging.basicConfig(level=level)
     else:
         logging.basicConfig(
-            level=logging.INFO, format='%(levelname)s: %(message)s')
+            level=logging.INFO, format=u'%(levelname)s: %(message)s')
 
     # Discover all available model importers
     importers = {}
@@ -414,10 +414,10 @@ def main():
     except ModelLoadError as e:
         logger.error('Failed to load model!', exc_info=True)
         importer.help()
-        parser.error(str(e))
+        parser.error(text_type(e))
     except ParseError as e:
         logger.error('Failed to parse model!', exc_info=True)
-        logger.error(str(e))
+        logger.error(text_type(e))
         sys.exit(-1)
 
     model.print_summary()
