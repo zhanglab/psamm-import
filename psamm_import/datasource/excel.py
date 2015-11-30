@@ -1238,7 +1238,8 @@ class ImportShewanellaOng(Importer):
                 charge, _, kegg, cas) = sheet.row_values(i, end_colx=13)
 
             # Remove compartmentalization of compounds
-            compound_id = re.match(r'^(.*)\[.\]$', compound_id).group(1)
+            compound_id = re.match(
+                r'^(.*)\[.\]$', compound_id).group(1).lower()
             name = name if name.strip() != '' else None
 
             if formula_neutral.strip() != '':
