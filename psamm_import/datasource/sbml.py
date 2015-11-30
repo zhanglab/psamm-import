@@ -224,21 +224,6 @@ class NonstrictImporter(BaseImporter):
 
             yield CompoundEntry(**properties)
 
-    def _parse_gene_association(self, reaction_id, s):
-        if s == '':
-            return None
-
-        try:
-            return boolean.Expression(s)
-        except boolean.ParseError as e:
-            msg = (u'Failed to parse gene association for {}: {}'.format(
-                    reaction_id, text_type(e)))
-            if e.indicator is not None:
-                msg += u'\n{}\n{}'.format(s, e.indicator)
-            logger.warning(msg)
-
-        return None
-
     def _convert_reactions(self, reactions, flux_limits):
         """Convert SBML reaction entries to reactions."""
         for reaction in reactions:
@@ -253,7 +238,7 @@ class NonstrictImporter(BaseImporter):
 
                     m = re.match(r'GENE_ASSOCIATION: (.+)$', note)
                     if m:
-                        assoc = self._parse_gene_association(
+                        assoc = self._try_parse_gene_association(
                             reaction.id, m.group(1).strip())
                         if assoc is not None:
                             properties['genes'] = assoc

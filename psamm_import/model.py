@@ -21,9 +21,13 @@ This module contains various classes for representing the intermediate
 result of parsing a model before it is converted to YAML format.
 """
 
-from six import itervalues
+import logging
+
+from six import itervalues, text_type
 
 from psamm.expression import boolean
+
+logger = logging.getLogger(__name__)
 
 
 class ImportError(Exception):
@@ -175,3 +179,18 @@ class MetabolicModel(object):
 
 class Importer(object):
     """Base importer class."""
+
+    def _try_parse_gene_association(self, reaction_id, s):
+        if s == '':
+            return None
+
+        try:
+            return boolean.Expression(s)
+        except boolean.ParseError as e:
+            msg = u'Failed to parse gene association for {}: {}'.format(
+                reaction_id, text_type(e))
+            if e.indicator is not None:
+                msg += u'\n{}\n{}'.format(s, e.indicator)
+            logger.warning(msg)
+
+        return s

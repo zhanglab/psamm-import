@@ -134,11 +134,7 @@ class ImportiMA945(Importer):
             else:
                 equation = None
 
-            if genes != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'STM\d+', genes))
-            else:
-                genes = None
+            genes = self._try_parse_gene_association(reaction_id, genes)
 
             yield ReactionEntry(id=reaction_id, name=name,
                                 genes=genes, equation=equation)
@@ -204,12 +200,7 @@ class ImportiRR1083(Importer):
             if reaction_id.strip() == '':
                 continue
 
-            if genes != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'STM\d+', genes))
-            else:
-                genes = None
-
+            genes = self._try_parse_gene_association(reaction_id, genes)
             protein = None if protein == '' else protein
             name = None if name == '' else name
 
@@ -292,11 +283,7 @@ class ImportiJO1366(Importer):
             if reaction_id.strip() == '':
                 continue
 
-            if genes != '':
-                genes = boolean.Expression(genes)
-            else:
-                genes = None
-
+            genes = self._try_parse_gene_association(reaction_id, genes)
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
@@ -384,12 +371,7 @@ class EColiTextbookImport(Importer):
             if reaction_id.strip() == '':
                 continue
 
-            if genes.strip() != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'[sb]\d+', genes))
-            else:
-                genes = None
-
+            genes = self._try_parse_gene_association(reaction_id, genes)
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
@@ -472,12 +454,7 @@ class ImportSTMv1_0(Importer):
                 equation = None
 
             subsystem = None if subsystem.strip() == '' else subsystem
-
-            if genes.strip() != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'STM\d+', genes))
-            else:
-                genes = None
+            genes = self._try_parse_gene_association(reaction_id, genes)
 
             yield ReactionEntry(id=reaction_id, name=name,
                                 genes=genes, equation=equation,
@@ -568,12 +545,7 @@ class ImportiJN746(Importer):
 
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
-
-            if genes.strip() != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'PP_\d+', genes))
-            else:
-                genes = None
+            genes = self._try_parse_gene_association(reaction_id, genes)
 
             yield ReactionEntry(id=reaction_id, name=name,
                                 genes=genes, equation=equation,
@@ -648,12 +620,7 @@ class ImportiJP815(Importer):
                 equation = None
 
             subsystem = None if subsystem.strip() == '' else subsystem
-
-            if genes.strip() != '':
-                genes = frozenset('PP_'+m.group(1)
-                                  for m in re.finditer(r'PP(\d+)', genes))
-            else:
-                genes = None
+            genes = self._try_parse_gene_association(reaction_id, genes)
 
             yield ReactionEntry(id=reaction_id, name=name, genes=genes,
                                 equation=equation, subsystem=subsystem)
@@ -753,12 +720,7 @@ class ImportiSyn731(Importer):
             else:
                 equation = None
 
-            if genes != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'\w+\d+', genes))
-            else:
-                genes = None
-
+            genes = self._try_parse_gene_association(reaction_id, genes)
             ec = ec if ec.strip() != '' and ec != 'Undetermined' else None
 
             yield ReactionEntry(id=reaction_id, name=name, genes=genes,
@@ -879,11 +841,8 @@ class ImportiCce806(Importer):
                 equation = parse_metnet_reaction(equation)
             else:
                 equation = None
-            if genes != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'cce\_[0-9]+', genes))
-            else:
-                genes = None
+
+            genes = self._try_parse_gene_association(reaction_id, genes)
 
             m = re.match(r'EC-(.*)', ec)
             if m:
@@ -1005,11 +964,7 @@ class ImportGSMN_TB(Importer):
             #if not reaction_id.stripstartswith('%'):
             #    continue
             #print(equation)
-            if genes.strip() != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'Rv\w+', genes))
-            else:
-                genes = None
+            genes = self._try_parse_gene_association(reaction_id, genes)
 
             name = None if name.strip() == '' else name
             if equation.strip() != '':
@@ -1083,6 +1038,7 @@ class ImportiNJ661(Importer):
             if reaction_id.strip() == '':
                 continue
 
+            # TODO model uses an alternative gene association format
             if genes.strip() != '':
                 genes = frozenset(m.group(0)
                                   for m in re.finditer(r'Rv\w+', genes))
@@ -1151,12 +1107,7 @@ class ImportGenericiNJ661mv(Importer):
             if reaction_id.strip() == '':
                 continue
 
-            if genes.strip() != '':
-                genes = frozenset(m.group(0)
-                                  for m in re.finditer(r'Rv\w+', genes))
-            else:
-                genes = None
-
+            genes = self._try_parse_gene_association(reaction_id, genes)
             name = None if name.strip() == '' else name.strip()
 
             # Biomass reaction is not specified in this table
@@ -1288,7 +1239,7 @@ class ImportShewanellaOng(Importer):
 
             # Genes
             model_genes = sheet.row_values(
-                i, start_colx=13, end_colx=18)[self._col_index].strip()
+                i, start_colx=8, end_colx=12)[self._col_index].strip()
 
             # Fixup compound names in reactions
             def translate(s):
@@ -1314,11 +1265,7 @@ class ImportShewanellaOng(Importer):
             else:
                 equation = None
 
-            if model_genes != '':
-                genes = frozenset(model_genes.split())
-            else:
-                genes = None
-
+            genes = self._try_parse_gene_association(reaction_id, model_genes)
             subsystem = sheet.cell_value(i, 18)
 
             name = None if name.strip() == '' else name.strip()
@@ -1469,13 +1416,17 @@ class ImportModelSEED(Importer):
             else:
                 continue
 
-            if pegs != '':
-                pegs = frozenset(m.group(0) for m in
-                                 re.finditer(r'peg\.(\d+)', pegs))
-                genes = frozenset(peg_mapping[p] for p in pegs)
-            else:
-                pegs = None
-                genes = None
+            def translate_pegs(variable):
+                if variable.symbol in peg_mapping:
+                    return boolean.Variable(peg_mapping[variable.symbol])
+                return True
+
+            pegs = self._try_parse_gene_association(reaction_id, pegs)
+            genes = None
+            if isinstance(pegs, boolean.Expression):
+                genes = pegs.substitute(translate_pegs)
+                if genes.has_value():
+                    genes = None
 
             if ec_list == '':
                 ec_list = None
