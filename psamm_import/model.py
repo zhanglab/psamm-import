@@ -165,7 +165,7 @@ class MetabolicModel(object):
 
         if len(undefined) > 0:
             raise ParseError('Some reaction compounds are not defined in'
-                             'the model: {}'.format(undefined))
+                             ' the model: {}'.format(undefined))
 
 
 class Importer(object):
