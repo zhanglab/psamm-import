@@ -22,7 +22,7 @@ import re
 import glob
 import logging
 
-from six import iteritems
+from six import iteritems, itervalues
 
 from psamm.datasource import sbml
 
@@ -181,9 +181,8 @@ class NonstrictImporter(BaseImporter):
 
         model = MetabolicModel(
             model.name,
-            self._convert_compounds(model.compounds.itervalues()),
-            self._convert_reactions(model.reactions.itervalues(),
-                                    flux_limits))
+            self._convert_compounds(itervalues(model.compounds)),
+            self._convert_reactions(itervalues(model.reactions), flux_limits))
         model.biomass_reaction = biomass_reaction
 
         return model

@@ -22,6 +22,8 @@ import glob
 import json
 import logging
 
+from six import iteritems
+
 from psamm.reaction import Reaction, Compound
 
 from ..model import (Importer as BaseImporter, ModelLoadError,
@@ -91,7 +93,7 @@ class Importer(BaseImporter):
 
     def _parse_reaction_equation(self, doc):
         left, right = [], []
-        for metabolite, value in doc.iteritems():
+        for metabolite, value in iteritems(doc):
             if value < 0:
                 left.append((Compound(metabolite), -value))
             elif value > 0:

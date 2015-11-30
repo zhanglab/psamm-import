@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # This allows reading/writing Python OrderedDicts in the correct order.
 # See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts  # noqa
 def dict_representer(dumper, data):
-    return dumper.represent_dict(data.iteritems())
+    return dumper.represent_dict(iteritems(data))
 
 
 def dict_constructor(loader, node):
@@ -66,7 +66,7 @@ def detect_best_flux_limit(model):
 
     flux_limit_count = Counter()
 
-    for reaction_id, reaction in model.reactions.iteritems():
+    for reaction_id, reaction in iteritems(model.reactions):
         if 'equation' not in reaction.properties:
             continue
 
@@ -90,7 +90,7 @@ def detect_best_flux_limit(model):
 def model_compounds(model):
     """Yield model compounds as YAML dicts"""
 
-    for compound_id, compound in sorted(model.compounds.iteritems()):
+    for compound_id, compound in sorted(iteritems(model.compounds)):
         d = OrderedDict()
         d['id'] = encode_utf8(compound_id)
 
@@ -124,7 +124,7 @@ def model_compounds(model):
 def model_reactions(model, exchange=False):
     """Yield model reactions as YAML dicts"""
 
-    for reaction_id, reaction in sorted(model.reactions.iteritems()):
+    for reaction_id, reaction in sorted(iteritems(model.reactions)):
         d = OrderedDict()
         d['id'] = encode_utf8(reaction_id)
 
@@ -161,7 +161,7 @@ def model_medium(model, default_flux_limit):
 
     # Count and use the most common compartment as the default compartment
     compartment_count = Counter()
-    for reaction_id, reaction in model.reactions.iteritems():
+    for reaction_id, reaction in iteritems(model.reactions):
         equation = reaction.properties.get('equation')
         if equation is None or len(equation.compounds) != 1:
             continue
@@ -175,7 +175,7 @@ def model_medium(model, default_flux_limit):
 
     # Generate list of compounds in medium
     compounds = []
-    for reaction_id, reaction in sorted(model.reactions.iteritems()):
+    for reaction_id, reaction in sorted(iteritems(model.reactions)):
         equation = reaction.properties.get('equation')
         if equation is None:
             continue
@@ -241,7 +241,7 @@ def model_medium(model, default_flux_limit):
 def model_reaction_limits(model, exchange=False, default_flux_limit=None):
     """Yield model reaction limits as YAML dicts"""
 
-    for reaction_id, reaction in sorted(model.reactions.iteritems()):
+    for reaction_id, reaction in sorted(iteritems(model.reactions)):
         # Check whether reaction is exchange
         equation = reaction.properties.get('equation')
         if equation is None:

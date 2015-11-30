@@ -21,6 +21,8 @@ This module contains various classes for representing the intermediate
 result of parsing a model before it is converted to YAML format.
 """
 
+from six import itervalues
+
 
 class ImportError(Exception):
     """Exception used to signal a general import error."""
@@ -112,7 +114,7 @@ class MetabolicModel(object):
         self._biomass_reaction = None
 
         self._genes = set()
-        for r in self._reactions.itervalues():
+        for r in itervalues(self._reactions):
             if hasattr(r, 'genes') and r.genes is not None:
                 self._genes.update(r.genes)
 
@@ -155,7 +157,7 @@ class MetabolicModel(object):
     def _check_reaction_compounds(self):
         """Check that reaction compounds are defined in the model."""
         undefined = set()
-        for reaction in self.reactions.itervalues():
+        for reaction in itervalues(self.reactions):
             if reaction.equation is not None:
                 for compound, value in reaction.equation.compounds:
                     if compound.name not in self.compounds:
