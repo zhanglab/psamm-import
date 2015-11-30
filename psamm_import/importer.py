@@ -27,10 +27,11 @@ from collections import OrderedDict, Counter
 
 import yaml
 import pkg_resources
-from six import iteritems, text_type
+from six import iteritems, text_type, string_types
 
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction
+from psamm.expression import boolean
 
 from .util import mkdir_p
 from .model import ParseError, ModelLoadError
@@ -144,7 +145,10 @@ def model_reactions(model, exchange=False):
         if hasattr(reaction, 'name') and reaction.name is not None:
             d['name'] = encode_utf8(reaction.name)
         if hasattr(reaction, 'genes') and reaction.genes is not None:
-            d['genes'] = [encode_utf8(g) for g in reaction.genes]
+            if isinstance(reaction.genes, boolean.Expression):
+                d['genes'] = encode_utf8(text_type(reaction.genes))
+            else:
+                d['genes'] = [encode_utf8(g) for g in reaction.genes]
         if equation is not None:
             d['equation'] = encode_utf8(modelseed.format_reaction(equation))
         if (hasattr(reaction, 'subsystem') and

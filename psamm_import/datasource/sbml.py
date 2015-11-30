@@ -22,9 +22,10 @@ import re
 import glob
 import logging
 
-from six import iteritems, itervalues
+from six import iteritems, itervalues, text_type
 
 from psamm.datasource import sbml
+from psamm.expression import boolean
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
                      ReactionEntry, MetabolicModel)
@@ -237,7 +238,10 @@ class NonstrictImporter(BaseImporter):
 
                     m = re.match(r'GENE_ASSOCIATION: (.+)$', note)
                     if m:
-                        properties['gene_association'] = m.group(1)
+                        assoc = self._try_parse_gene_association(
+                            reaction.id, m.group(1).strip())
+                        if assoc is not None:
+                            properties['genes'] = assoc
 
             # Extract flux limits provided in parameters
             if reaction.id in flux_limits:
