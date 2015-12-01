@@ -196,13 +196,13 @@ class NonstrictImporter(BaseImporter):
             # Extract information from notes
             if compound.xml_notes is not None:
                 for note in compound.xml_notes.itertext():
-                    m = re.match(r'FORMULA: (.+)$', note)
+                    m = re.match(r'FORMULA:(.+)$', note)
                     if m:
-                        properties['formula'] = m.group(1)
+                        properties['formula'] = m.group(1).strip()
 
-                    m = re.match(r'CHARGE: (.+)$', note)
+                    m = re.match(r'CHARGE:(.+)$', note)
                     if m:
-                        value = m.group(1)
+                        value = m.group(1).strip()
                         try:
                             properties['charge'] = int(value)
                         except ValueError:
@@ -210,17 +210,17 @@ class NonstrictImporter(BaseImporter):
                                 'Unable to parse charge value for {} as an'
                                 ' integer: {}'.format(compound.id, value))
 
-                    m = re.match(r'KEGG ID: (.+)$', note)
+                    m = re.match(r'KEGG ID:(.+)$', note)
                     if m:
-                        properties['kegg'] = m.group(1)
+                        properties['kegg'] = m.group(1).strip()
 
-                    m = re.match(r'PubChem ID: (.+)$', note)
+                    m = re.match(r'PubChem ID:(.+)$', note)
                     if m:
-                        properties['pubchem_id'] = m.group(1)
+                        properties['pubchem_id'] = m.group(1).strip()
 
-                    m = re.match(r'ChEBI ID: (.+)$', note)
+                    m = re.match(r'ChEBI ID:(.+)$', note)
                     if m:
-                        properties['chebi_id'] = m.group(1)
+                        properties['chebi_id'] = m.group(1).strip()
 
             yield CompoundEntry(**properties)
 
@@ -232,11 +232,11 @@ class NonstrictImporter(BaseImporter):
             # Extract information from notes
             if reaction.xml_notes is not None:
                 for note in reaction.xml_notes.itertext():
-                    m = re.match(r'SUBSYSTEM: (.+)$', note)
+                    m = re.match(r'SUBSYSTEM:(.+)$', note)
                     if m:
-                        properties['subsystem'] = m.group(1)
+                        properties['subsystem'] = m.group(1).strip()
 
-                    m = re.match(r'GENE_ASSOCIATION: (.+)$', note)
+                    m = re.match(r'GENE_ASSOCIATION:(.+)$', note)
                     if m:
                         assoc = self._try_parse_gene_association(
                             reaction.id, m.group(1).strip())
