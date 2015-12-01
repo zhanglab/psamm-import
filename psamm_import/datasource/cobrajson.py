@@ -22,6 +22,8 @@ import glob
 import json
 import logging
 
+from six import iteritems
+
 from psamm.reaction import Reaction, Compound
 
 from ..model import (Importer as BaseImporter, ModelLoadError,
@@ -91,7 +93,7 @@ class Importer(BaseImporter):
 
     def _parse_reaction_equation(self, doc):
         left, right = [], []
-        for metabolite, value in doc.iteritems():
+        for metabolite, value in iteritems(doc):
             if value < 0:
                 left.append((Compound(metabolite), -value))
             elif value > 0:
@@ -107,9 +109,13 @@ class Importer(BaseImporter):
             upper_flux = reaction.get('upper_bound')
             subsystem = reaction.get('subsystem')
 
+            genes = reaction.get('gene_reaction_rule')
+            if genes is not None:
+                genes = self._try_parse_gene_association(id, genes)
+
             yield ReactionEntry(id=id, name=name, equation=equation,
                                 lower_flux=lower_flux, upper_flux=upper_flux,
-                                subsystem=subsystem)
+                                subsystem=subsystem, genes=genes)
 
     def import_model(self, source):
         if not hasattr(source, 'read'):  # Not a File-like object

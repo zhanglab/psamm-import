@@ -22,9 +22,10 @@ import re
 import glob
 import logging
 
-from six import iteritems
+from six import iteritems, itervalues, text_type
 
 from psamm.datasource import sbml
+from psamm.expression import boolean
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
                      ReactionEntry, MetabolicModel)
@@ -181,9 +182,8 @@ class NonstrictImporter(BaseImporter):
 
         model = MetabolicModel(
             model.name,
-            self._convert_compounds(model.compounds.itervalues()),
-            self._convert_reactions(model.reactions.itervalues(),
-                                    flux_limits))
+            self._convert_compounds(itervalues(model.compounds)),
+            self._convert_reactions(itervalues(model.reactions), flux_limits))
         model.biomass_reaction = biomass_reaction
 
         return model
@@ -196,31 +196,31 @@ class NonstrictImporter(BaseImporter):
             # Extract information from notes
             if compound.xml_notes is not None:
                 for note in compound.xml_notes.itertext():
-                    m = re.match(r'FORMULA: (.+)$', note)
+                    m = re.match(r'FORMULA:(.+)$', note)
                     if m:
-                        properties['formula'] = m.group(1)
+                        properties['formula'] = m.group(1).strip()
 
-                    m = re.match(r'CHARGE: (.+)$', note)
+                    m = re.match(r'CHARGE:(.+)$', note)
                     if m:
-                        value = m.group(1)
+                        value = m.group(1).strip()
                         try:
                             properties['charge'] = int(value)
                         except ValueError:
                             logger.warning(
                                 'Unable to parse charge value for {} as an'
-                                ' interger: {}'.format(compound.id, value))
+                                ' integer: {}'.format(compound.id, value))
 
-                    m = re.match(r'KEGG ID: (.+)$', note)
+                    m = re.match(r'KEGG ID:(.+)$', note)
                     if m:
-                        properties['kegg'] = m.group(1)
+                        properties['kegg'] = m.group(1).strip()
 
-                    m = re.match(r'PubChem ID: (.+)$', note)
+                    m = re.match(r'PubChem ID:(.+)$', note)
                     if m:
-                        properties['pubchem_id'] = m.group(1)
+                        properties['pubchem_id'] = m.group(1).strip()
 
-                    m = re.match(r'ChEBI ID: (.+)$', note)
+                    m = re.match(r'ChEBI ID:(.+)$', note)
                     if m:
-                        properties['chebi_id'] = m.group(1)
+                        properties['chebi_id'] = m.group(1).strip()
 
             yield CompoundEntry(**properties)
 
@@ -232,13 +232,16 @@ class NonstrictImporter(BaseImporter):
             # Extract information from notes
             if reaction.xml_notes is not None:
                 for note in reaction.xml_notes.itertext():
-                    m = re.match(r'SUBSYSTEM: (.+)$', note)
+                    m = re.match(r'SUBSYSTEM:(.+)$', note)
                     if m:
-                        properties['subsystem'] = m.group(1)
+                        properties['subsystem'] = m.group(1).strip()
 
-                    m = re.match(r'GENE_ASSOCIATION: (.+)$', note)
+                    m = re.match(r'GENE_ASSOCIATION:(.+)$', note)
                     if m:
-                        properties['gene_association'] = m.group(1)
+                        assoc = self._try_parse_gene_association(
+                            reaction.id, m.group(1).strip())
+                        if assoc is not None:
+                            properties['genes'] = assoc
 
             # Extract flux limits provided in parameters
             if reaction.id in flux_limits:

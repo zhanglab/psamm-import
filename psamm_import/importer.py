@@ -27,10 +27,11 @@ from collections import OrderedDict, Counter
 
 import yaml
 import pkg_resources
-from six import iteritems
+from six import iteritems, text_type, string_types
 
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction
+from psamm.expression import boolean
 
 from .util import mkdir_p
 from .model import ParseError, ModelLoadError
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
 # This allows reading/writing Python OrderedDicts in the correct order.
 # See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts  # noqa
 def dict_representer(dumper, data):
-    return dumper.represent_dict(data.iteritems())
+    return dumper.represent_dict(iteritems(data))
 
 
 def dict_constructor(loader, node):
@@ -66,7 +67,7 @@ def detect_best_flux_limit(model):
 
     flux_limit_count = Counter()
 
-    for reaction_id, reaction in model.reactions.iteritems():
+    for reaction_id, reaction in iteritems(model.reactions):
         if 'equation' not in reaction.properties:
             continue
 
@@ -90,7 +91,7 @@ def detect_best_flux_limit(model):
 def model_compounds(model):
     """Yield model compounds as YAML dicts"""
 
-    for compound_id, compound in sorted(model.compounds.iteritems()):
+    for compound_id, compound in sorted(iteritems(model.compounds)):
         d = OrderedDict()
         d['id'] = encode_utf8(compound_id)
 
@@ -100,11 +101,11 @@ def model_compounds(model):
 
         formula = compound.properties.get('formula')
         if formula is not None:
-            d['formula'] = str(formula)
+            d['formula'] = encode_utf8(text_type(formula))
 
         formula_neutral = compound.properties.get('formula_neutral')
         if formula_neutral is not None:
-            d['formula_neutral'] = str(formula_neutral)
+            d['formula_neutral'] = encode_utf8(text_type(formula_neutral))
 
         charge = compound.properties.get('charge')
         if charge is not None:
@@ -124,7 +125,7 @@ def model_compounds(model):
 def model_reactions(model, exchange=False):
     """Yield model reactions as YAML dicts"""
 
-    for reaction_id, reaction in sorted(model.reactions.iteritems()):
+    for reaction_id, reaction in sorted(iteritems(model.reactions)):
         d = OrderedDict()
         d['id'] = encode_utf8(reaction_id)
 
@@ -144,7 +145,10 @@ def model_reactions(model, exchange=False):
         if hasattr(reaction, 'name') and reaction.name is not None:
             d['name'] = encode_utf8(reaction.name)
         if hasattr(reaction, 'genes') and reaction.genes is not None:
-            d['genes'] = [encode_utf8(g) for g in reaction.genes]
+            if isinstance(reaction.genes, boolean.Expression):
+                d['genes'] = encode_utf8(text_type(reaction.genes))
+            else:
+                d['genes'] = [encode_utf8(g) for g in reaction.genes]
         if equation is not None:
             d['equation'] = encode_utf8(modelseed.format_reaction(equation))
         if (hasattr(reaction, 'subsystem') and
@@ -161,7 +165,7 @@ def model_medium(model, default_flux_limit):
 
     # Count and use the most common compartment as the default compartment
     compartment_count = Counter()
-    for reaction_id, reaction in model.reactions.iteritems():
+    for reaction_id, reaction in iteritems(model.reactions):
         equation = reaction.properties.get('equation')
         if equation is None or len(equation.compounds) != 1:
             continue
@@ -175,7 +179,7 @@ def model_medium(model, default_flux_limit):
 
     # Generate list of compounds in medium
     compounds = []
-    for reaction_id, reaction in sorted(model.reactions.iteritems()):
+    for reaction_id, reaction in sorted(iteritems(model.reactions)):
         equation = reaction.properties.get('equation')
         if equation is None:
             continue
@@ -241,7 +245,7 @@ def model_medium(model, default_flux_limit):
 def model_reaction_limits(model, exchange=False, default_flux_limit=None):
     """Yield model reaction limits as YAML dicts"""
 
-    for reaction_id, reaction in sorted(model.reactions.iteritems()):
+    for reaction_id, reaction in sorted(iteritems(model.reactions)):
         # Check whether reaction is exchange
         equation = reaction.properties.get('equation')
         if equation is None:
@@ -362,7 +366,7 @@ def main():
             logging.basicConfig(level=level)
     else:
         logging.basicConfig(
-            level=logging.INFO, format='%(levelname)s: %(message)s')
+            level=logging.INFO, format=u'%(levelname)s: %(message)s')
 
     # Discover all available model importers
     importers = {}
@@ -414,10 +418,10 @@ def main():
     except ModelLoadError as e:
         logger.error('Failed to load model!', exc_info=True)
         importer.help()
-        parser.error(str(e))
+        parser.error(text_type(e))
     except ParseError as e:
         logger.error('Failed to parse model!', exc_info=True)
-        logger.error(str(e))
+        logger.error(text_type(e))
         sys.exit(-1)
 
     model.print_summary()
