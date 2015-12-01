@@ -147,6 +147,8 @@ def model_reactions(model, exchange=False):
         if hasattr(reaction, 'genes') and reaction.genes is not None:
             if isinstance(reaction.genes, boolean.Expression):
                 d['genes'] = encode_utf8(text_type(reaction.genes))
+            elif isinstance(reaction.genes, string_types):
+                d['genes'] = encode_utf8(reaction.genes)
             else:
                 d['genes'] = [encode_utf8(g) for g in reaction.genes]
         if equation is not None:
