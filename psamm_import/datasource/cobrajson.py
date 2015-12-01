@@ -109,9 +109,13 @@ class Importer(BaseImporter):
             upper_flux = reaction.get('upper_bound')
             subsystem = reaction.get('subsystem')
 
+            genes = reaction.get('gene_reaction_rule')
+            if genes is not None:
+                genes = self._try_parse_gene_association(id, genes)
+
             yield ReactionEntry(id=id, name=name, equation=equation,
                                 lower_flux=lower_flux, upper_flux=upper_flux,
-                                subsystem=subsystem)
+                                subsystem=subsystem, genes=genes)
 
     def import_model(self, source):
         if not hasattr(source, 'read'):  # Not a File-like object
