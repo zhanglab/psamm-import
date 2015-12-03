@@ -131,7 +131,8 @@ class ImportiMA945(Importer):
             name = None if name == '' else name
 
             if equation != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -204,7 +205,8 @@ class ImportiRR1083(Importer):
             name = None if name == '' else name
 
             if equation != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -280,7 +282,8 @@ class ImportiJO1366(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_sudensimple_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction)
             else:
                 equation = None
 
@@ -362,7 +365,8 @@ class EColiTextbookImport(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -431,8 +435,9 @@ class ImportSTMv1_0(Importer):
             name = None if name.strip() == '' else name.strip()
 
             if equation.strip() != '':
-                equation = parse_sudensimple_reaction(equation,
-                                                      arrow_irrev='-->')
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction,
+                    arrow_irrev='-->')
             else:
                 equation = None
 
@@ -516,7 +521,8 @@ class ImportiJN746(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -583,7 +589,9 @@ class ImportiJP815(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_sudensimple_reaction(equation, '<==>', '-->')
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction,
+                    arrow_rev='<==>', arrow_irrev='-->')
 
                 # Rebuild reaction with compartment information
                 def translate(c, v):
@@ -678,7 +686,7 @@ class ImportiSyn731(Importer):
                 equation = re.sub(r'\(1\)\|', '(1) |', equation)
                 equation = re.sub(r'\+\(1\)', '+ (1)', equation)
                 equation = re.sub(r'\|\|', '|', equation)
-                equation = modelseed.parse_reaction(equation)
+                equation = self._try_parse_reaction(reaction_id, equation)
             else:
                 equation = None
 
@@ -791,7 +799,8 @@ class ImportiCce806(Importer):
 
             if equation.strip() != '':
                 equation = re.sub(r'\s+', ' ', equation)
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -900,7 +909,9 @@ class ImportGSMN_TB(Importer):
             name = None if name.strip() == '' else name
             if equation.strip() != '':
                 equation = re.sub(r'\s+', ' ', equation)
-                equation = parse_sudensimple_reaction(equation, '=')
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction,
+                    arrow_rev='=')
                 rdir = Reaction.Bidir if fluxbound != 0 else Reaction.Right
                 equation = Reaction(rdir, equation.left, equation.right)
             else:
@@ -975,7 +986,8 @@ class ImportiNJ661(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -1039,8 +1051,9 @@ class ImportGenericiNJ661mv(Importer):
                     reaction_id != 'biomass_Mtb_9_60atp_test_NOF'):
                 # Remove multiple adjacent whitespace characters
                 equation = re.sub(r'\s+', ' ', equation)
-                equation = parse_sudensimple_reaction(
-                    equation, arrow_rev='<=>', arrow_irrev='->')
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction,
+                    arrow_rev='<=>', arrow_irrev='->')
             else:
                 equation = None
 
@@ -1178,7 +1191,8 @@ class ImportShewanellaOng(Importer):
 
             # Reaction equation
             if equation.strip() != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
                 equation = equation.translated_compounds(translate)
             else:
                 equation = None
@@ -1330,7 +1344,7 @@ class ImportModelSEED(Importer):
             name = name if name.strip() != '' else None
 
             if equation != '' and 'NONE' not in equation:
-                equation = modelseed.parse_reaction(equation)
+                equation = self._try_parse_reaction(reaction_id, equation)
             else:
                 continue
 

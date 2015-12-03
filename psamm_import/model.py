@@ -26,6 +26,7 @@ import logging
 from six import itervalues, text_type
 
 from psamm.expression import boolean
+from psamm.datasource import modelseed
 from psamm import formula
 
 logger = logging.getLogger(__name__)
@@ -199,6 +200,19 @@ class Importer(object):
                 compound_id, s))
 
         return s
+
+    def _try_parse_reaction(self, reaction_id, s,
+                            parser=modelseed.parse_reaction, **kwargs):
+        """Try to parse the given reaction equation string.
+
+        Returns the parsed Reaction object, or raises an error if the reaction
+        could not be parsed.
+        """
+        try:
+            return parser(s, **kwargs)
+        except modelseed.ParseError as e:
+            raise ParseError('Unable to parse reaction {}: {}'.format(
+                reaction_id, s))
 
     def _try_parse_gene_association(self, reaction_id, s):
         """Try to parse the given gene association rule.
