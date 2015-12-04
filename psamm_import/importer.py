@@ -146,7 +146,7 @@ def model_reactions(model, exchange=False):
             d['name'] = encode_utf8(reaction.name)
         if hasattr(reaction, 'genes') and reaction.genes is not None:
             if isinstance(reaction.genes, boolean.Expression):
-                d['genes'] = encode_utf8(text_type(reaction.genes))
+                d['genes'] = text_type(reaction.genes)
             elif isinstance(reaction.genes, string_types):
                 d['genes'] = encode_utf8(reaction.genes)
             else:
@@ -294,7 +294,7 @@ def write_yaml_model(model, dest='.', convert_medium=True):
     The parameter ``convert_medium`` indicates whether the exchange reactions
     should be converted automatically to a medium file.
     """
-    yaml.add_representer(OrderedDict, dict_representer)
+    yaml.SafeDumper.add_representer(OrderedDict, dict_representer)
     yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                          dict_constructor)
 
@@ -304,7 +304,7 @@ def write_yaml_model(model, dest='.', convert_medium=True):
                  'width': 79}
 
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
-        yaml.dump(list(model_compounds(model)), f, **yaml_args)
+        yaml.safe_dump(list(model_compounds(model)), f, **yaml_args)
 
     default_flux_limit = detect_best_flux_limit(model)
     if default_flux_limit is not None:
@@ -317,17 +317,17 @@ def write_yaml_model(model, dest='.', convert_medium=True):
     exchange = not convert_medium
     with open(os.path.join(dest, 'reactions.yaml'), 'w+') as f:
         reactions = list(model_reactions(model, exchange=exchange))
-        yaml.dump(reactions, f, **yaml_args)
+        yaml.safe_dump(reactions, f, **yaml_args)
 
     if convert_medium:
         with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
-            yaml.dump(model_medium(model, default_flux_limit), f, **yaml_args)
+            yaml.safe_dump(model_medium(model, default_flux_limit), f, **yaml_args)
 
     reaction_limits = list(model_reaction_limits(
         model, exchange, default_flux_limit))
     if len(reaction_limits) > 0:
         with open(os.path.join(dest, 'limits.yaml'), 'w+') as f:
-            yaml.dump(reaction_limits, f, **yaml_args)
+            yaml.safe_dump(reaction_limits, f, **yaml_args)
 
     model_d = OrderedDict([('name', encode_utf8(model.name))])
     if model.biomass_reaction is not None:
@@ -345,7 +345,7 @@ def write_yaml_model(model, dest='.', convert_medium=True):
         model_d['limits'] = [{'include': 'limits.yaml'}]
 
     with open(os.path.join(dest, 'model.yaml'), 'w+') as f:
-        yaml.dump(model_d, f, **yaml_args)
+        yaml.safe_dump(model_d, f, **yaml_args)
 
 
 def main():
