@@ -32,6 +32,7 @@ from six import iteritems, text_type, string_types
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction
 from psamm.expression import boolean
+from psamm.formula import Formula
 
 from .util import mkdir_p
 from .model import ParseError, ModelLoadError
@@ -55,6 +56,22 @@ def encode_utf8(s):
     if isinstance(s, unicode):
         return s.encode('utf-8')
     return s
+
+
+def set_representer(dumper, data):
+    return dumper.represent_list(iter(data))
+
+
+def boolean_expression_representer(dumper, data):
+    return dumper.represent_unicode(text_type(data))
+
+
+def reaction_representer(dumper, data):
+    return dumper.represent_unicode(modelseed.format_reaction(data))
+
+
+def formula_representer(dumper, data):
+    return dumper.represent_unicode(text_type(data))
 
 
 def detect_best_flux_limit(model):
@@ -93,31 +110,17 @@ def model_compounds(model):
 
     for compound_id, compound in sorted(iteritems(model.compounds)):
         d = OrderedDict()
-        d['id'] = encode_utf8(compound_id)
+        d['id'] = compound_id
 
-        name = compound.properties.get('name')
-        if name is not None:
-            d['name'] = encode_utf8(name)
-
-        formula = compound.properties.get('formula')
-        if formula is not None:
-            d['formula'] = encode_utf8(text_type(formula))
-
-        formula_neutral = compound.properties.get('formula_neutral')
-        if formula_neutral is not None:
-            d['formula_neutral'] = encode_utf8(text_type(formula_neutral))
-
-        charge = compound.properties.get('charge')
-        if charge is not None:
-            d['charge'] = int(charge)
-
-        kegg = compound.properties.get('kegg')
-        if kegg is not None:
-            d['kegg'] = encode_utf8(kegg)
-
-        cas = compound.properties.get('cas')
-        if cas is not None:
-            d['cas'] = encode_utf8(cas)
+        order = {
+            key: i for i, key in enumerate(
+                ['name', 'formula', 'formula_neutral', 'charge', 'kegg',
+                 'cas'])}
+        prop_keys = (
+            set(compound.properties) - {'boundary', 'compartment'})
+        for prop in sorted(prop_keys, key=lambda x: (order.get(x, 1000), x)):
+            if compound.properties[prop] is not None:
+                d[prop] = compound.properties[prop]
 
         yield d
 
@@ -142,22 +145,14 @@ def model_reactions(model, exchange=False):
             if len(equation.compounds) == 1:
                 continue
 
-        if hasattr(reaction, 'name') and reaction.name is not None:
-            d['name'] = encode_utf8(reaction.name)
-        if hasattr(reaction, 'genes') and reaction.genes is not None:
-            if isinstance(reaction.genes, boolean.Expression):
-                d['genes'] = text_type(reaction.genes)
-            elif isinstance(reaction.genes, string_types):
-                d['genes'] = encode_utf8(reaction.genes)
-            else:
-                d['genes'] = [encode_utf8(g) for g in reaction.genes]
-        if equation is not None:
-            d['equation'] = encode_utf8(modelseed.format_reaction(equation))
-        if (hasattr(reaction, 'subsystem') and
-                reaction.subsystem is not None):
-            d['subsystem'] = encode_utf8(reaction.subsystem)
-        if hasattr(reaction, 'ec') and reaction.ec is not None:
-            d['ec'] = encode_utf8(reaction.ec)
+        order = {
+            key: i for i, key in enumerate(
+                ['name', 'genes', 'equation', 'subsystem', 'ec'])}
+        prop_keys = (set(reaction.properties) -
+            {'lower_flux', 'upper_flux', 'reversible'})
+        for prop in sorted(prop_keys, key=lambda x: (order.get(x, 1000), x)):
+            if reaction.properties[prop] is not None:
+                d[prop] = reaction.properties[prop]
 
         yield d
 
@@ -295,6 +290,13 @@ def write_yaml_model(model, dest='.', convert_medium=True):
     should be converted automatically to a medium file.
     """
     yaml.SafeDumper.add_representer(OrderedDict, dict_representer)
+    yaml.SafeDumper.add_representer(set, set_representer)
+    yaml.SafeDumper.add_representer(frozenset, set_representer)
+    yaml.SafeDumper.add_representer(
+        boolean.Expression, boolean_expression_representer)
+    yaml.SafeDumper.add_representer(Reaction, reaction_representer)
+    yaml.SafeDumper.add_representer(Formula, formula_representer)
+
     yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                          dict_constructor)
 
