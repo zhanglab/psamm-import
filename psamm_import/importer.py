@@ -52,12 +52,6 @@ def dict_constructor(loader, node):
     return OrderedDict(loader.construct_pairs(node))
 
 
-def encode_utf8(s):
-    if isinstance(s, unicode):
-        return s.encode('utf-8')
-    return s
-
-
 def set_representer(dumper, data):
     return dumper.represent_list(iter(data))
 
@@ -130,7 +124,7 @@ def model_reactions(model, exchange=False):
 
     for reaction_id, reaction in sorted(iteritems(model.reactions)):
         d = OrderedDict()
-        d['id'] = encode_utf8(reaction_id)
+        d['id'] = reaction_id
 
         # Check reaction equation
         equation = reaction.properties.get('equation')
@@ -215,11 +209,10 @@ def model_medium(model, default_flux_limit):
                 -upper_flux if upper_flux is not None else None,
                 -lower_flux if lower_flux is not None else None)
 
-        c = OrderedDict([
-            ('id', encode_utf8(compound.name))])
+        c = OrderedDict([('id', compound.name)])
         if compound.compartment != default_compartment:
-            c['compartment'] = encode_utf8(compound.compartment)
-        c['reaction'] = encode_utf8(reaction_id)
+            c['compartment'] = compound.compartment
+        c['reaction'] = reaction_id
 
         # Assign flux limits if different than the defaults. Also, add 0 so
         # that -0.0 is converted to plain 0.0 which looks better in the output.
@@ -230,10 +223,9 @@ def model_medium(model, default_flux_limit):
 
         compounds.append(c)
 
-    medium = OrderedDict([
-        ('name', 'Default medium')])
+    medium = OrderedDict([('name', 'Default medium')])
     if default_compartment is not None:
-        medium['compartment'] = encode_utf8(default_compartment)
+        medium['compartment'] = default_compartment
     medium['compounds'] = compounds
 
     return medium
@@ -274,7 +266,7 @@ def model_reaction_limits(model, exchange=False, default_flux_limit=None):
             upper_flux = reaction.properties['upper_flux']
 
         if lower_flux is not None or upper_flux is not None:
-            d = OrderedDict([('reaction', encode_utf8(reaction_id))])
+            d = OrderedDict([('reaction', reaction_id)])
             if lower_flux is not None:
                 d['lower'] = lower_flux
             if upper_flux is not None:
@@ -331,9 +323,9 @@ def write_yaml_model(model, dest='.', convert_medium=True):
         with open(os.path.join(dest, 'limits.yaml'), 'w+') as f:
             yaml.safe_dump(reaction_limits, f, **yaml_args)
 
-    model_d = OrderedDict([('name', encode_utf8(model.name))])
+    model_d = OrderedDict([('name', model.name)])
     if model.biomass_reaction is not None:
-        model_d['biomass'] = encode_utf8(model.biomass_reaction)
+        model_d['biomass'] = model.biomass_reaction
     if default_flux_limit is not None:
         model_d['default_flux_limit'] = default_flux_limit
     model_d.update([
