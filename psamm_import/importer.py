@@ -289,6 +289,8 @@ def write_yaml_model(model, dest='.', convert_medium=True):
     yaml.SafeDumper.add_representer(Reaction, reaction_representer)
     yaml.SafeDumper.add_representer(Formula, formula_representer)
 
+    yaml.SafeDumper.ignore_aliases = lambda *args: True
+
     yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                          dict_constructor)
 
