@@ -248,6 +248,25 @@ class NonstrictImporter(BaseImporter):
                     if assoc is not None:
                         properties['genes'] = assoc
 
+                if 'ec_number' in cobra_notes:
+                    properties['ec'] = cobra_notes['ec_number']
+
+                if 'authors' in cobra_notes:
+                    properties['authors'] = [
+                        a.strip() for a in cobra_notes['authors'].split(';')]
+
+                if 'confidence' in cobra_notes:
+                    try:
+                        value = int(cobra_notes['confidence'])
+                    except ValueError:
+                        logger.warning(
+                            'Unable to parse confidence level for {} as an'
+                            ' integer: {}'.format(
+                                reaction.id, cobra_notes['confidence']))
+                        value = cobra_notes['confidence']
+
+                    properties['confidence'] = value
+
             # Extract flux limits provided in parameters
             if reaction.id in flux_limits:
                 lower, upper = flux_limits[reaction.id]
