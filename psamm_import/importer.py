@@ -32,6 +32,7 @@ from six import iteritems, text_type, string_types
 from psamm.datasource import modelseed
 from psamm.reaction import Reaction
 from psamm.expression import boolean
+from psamm.formula import Formula
 
 from .util import mkdir_p
 from .model import ParseError, ModelLoadError
@@ -51,10 +52,20 @@ def dict_constructor(loader, node):
     return OrderedDict(loader.construct_pairs(node))
 
 
-def encode_utf8(s):
-    if isinstance(s, unicode):
-        return s.encode('utf-8')
-    return s
+def set_representer(dumper, data):
+    return dumper.represent_list(iter(data))
+
+
+def boolean_expression_representer(dumper, data):
+    return dumper.represent_unicode(text_type(data))
+
+
+def reaction_representer(dumper, data):
+    return dumper.represent_unicode(modelseed.format_reaction(data))
+
+
+def formula_representer(dumper, data):
+    return dumper.represent_unicode(text_type(data))
 
 
 def detect_best_flux_limit(model):
@@ -93,31 +104,17 @@ def model_compounds(model):
 
     for compound_id, compound in sorted(iteritems(model.compounds)):
         d = OrderedDict()
-        d['id'] = encode_utf8(compound_id)
+        d['id'] = compound_id
 
-        name = compound.properties.get('name')
-        if name is not None:
-            d['name'] = encode_utf8(name)
-
-        formula = compound.properties.get('formula')
-        if formula is not None:
-            d['formula'] = encode_utf8(text_type(formula))
-
-        formula_neutral = compound.properties.get('formula_neutral')
-        if formula_neutral is not None:
-            d['formula_neutral'] = encode_utf8(text_type(formula_neutral))
-
-        charge = compound.properties.get('charge')
-        if charge is not None:
-            d['charge'] = int(charge)
-
-        kegg = compound.properties.get('kegg')
-        if kegg is not None:
-            d['kegg'] = encode_utf8(kegg)
-
-        cas = compound.properties.get('cas')
-        if cas is not None:
-            d['cas'] = encode_utf8(cas)
+        order = {
+            key: i for i, key in enumerate(
+                ['name', 'formula', 'formula_neutral', 'charge', 'kegg',
+                 'cas'])}
+        prop_keys = (
+            set(compound.properties) - {'boundary', 'compartment'})
+        for prop in sorted(prop_keys, key=lambda x: (order.get(x, 1000), x)):
+            if compound.properties[prop] is not None:
+                d[prop] = compound.properties[prop]
 
         yield d
 
@@ -127,7 +124,7 @@ def model_reactions(model, exchange=False):
 
     for reaction_id, reaction in sorted(iteritems(model.reactions)):
         d = OrderedDict()
-        d['id'] = encode_utf8(reaction_id)
+        d['id'] = reaction_id
 
         # Check reaction equation
         equation = reaction.properties.get('equation')
@@ -142,20 +139,14 @@ def model_reactions(model, exchange=False):
             if len(equation.compounds) == 1:
                 continue
 
-        if hasattr(reaction, 'name') and reaction.name is not None:
-            d['name'] = encode_utf8(reaction.name)
-        if hasattr(reaction, 'genes') and reaction.genes is not None:
-            if isinstance(reaction.genes, boolean.Expression):
-                d['genes'] = encode_utf8(text_type(reaction.genes))
-            else:
-                d['genes'] = [encode_utf8(g) for g in reaction.genes]
-        if equation is not None:
-            d['equation'] = encode_utf8(modelseed.format_reaction(equation))
-        if (hasattr(reaction, 'subsystem') and
-                reaction.subsystem is not None):
-            d['subsystem'] = encode_utf8(reaction.subsystem)
-        if hasattr(reaction, 'ec') and reaction.ec is not None:
-            d['ec'] = encode_utf8(reaction.ec)
+        order = {
+            key: i for i, key in enumerate(
+                ['name', 'genes', 'equation', 'subsystem', 'ec'])}
+        prop_keys = (set(reaction.properties) -
+            {'lower_flux', 'upper_flux', 'reversible'})
+        for prop in sorted(prop_keys, key=lambda x: (order.get(x, 1000), x)):
+            if reaction.properties[prop] is not None:
+                d[prop] = reaction.properties[prop]
 
         yield d
 
@@ -218,11 +209,10 @@ def model_medium(model, default_flux_limit):
                 -upper_flux if upper_flux is not None else None,
                 -lower_flux if lower_flux is not None else None)
 
-        c = OrderedDict([
-            ('id', encode_utf8(compound.name))])
+        c = OrderedDict([('id', compound.name)])
         if compound.compartment != default_compartment:
-            c['compartment'] = encode_utf8(compound.compartment)
-        c['reaction'] = encode_utf8(reaction_id)
+            c['compartment'] = compound.compartment
+        c['reaction'] = reaction_id
 
         # Assign flux limits if different than the defaults. Also, add 0 so
         # that -0.0 is converted to plain 0.0 which looks better in the output.
@@ -233,10 +223,9 @@ def model_medium(model, default_flux_limit):
 
         compounds.append(c)
 
-    medium = OrderedDict([
-        ('name', 'Default medium')])
+    medium = OrderedDict([('name', 'Default medium')])
     if default_compartment is not None:
-        medium['compartment'] = encode_utf8(default_compartment)
+        medium['compartment'] = default_compartment
     medium['compounds'] = compounds
 
     return medium
@@ -277,7 +266,7 @@ def model_reaction_limits(model, exchange=False, default_flux_limit=None):
             upper_flux = reaction.properties['upper_flux']
 
         if lower_flux is not None or upper_flux is not None:
-            d = OrderedDict([('reaction', encode_utf8(reaction_id))])
+            d = OrderedDict([('reaction', reaction_id)])
             if lower_flux is not None:
                 d['lower'] = lower_flux
             if upper_flux is not None:
@@ -292,7 +281,16 @@ def write_yaml_model(model, dest='.', convert_medium=True):
     The parameter ``convert_medium`` indicates whether the exchange reactions
     should be converted automatically to a medium file.
     """
-    yaml.add_representer(OrderedDict, dict_representer)
+    yaml.SafeDumper.add_representer(OrderedDict, dict_representer)
+    yaml.SafeDumper.add_representer(set, set_representer)
+    yaml.SafeDumper.add_representer(frozenset, set_representer)
+    yaml.SafeDumper.add_representer(
+        boolean.Expression, boolean_expression_representer)
+    yaml.SafeDumper.add_representer(Reaction, reaction_representer)
+    yaml.SafeDumper.add_representer(Formula, formula_representer)
+
+    yaml.SafeDumper.ignore_aliases = lambda *args: True
+
     yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                          dict_constructor)
 
@@ -302,7 +300,7 @@ def write_yaml_model(model, dest='.', convert_medium=True):
                  'width': 79}
 
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
-        yaml.dump(list(model_compounds(model)), f, **yaml_args)
+        yaml.safe_dump(list(model_compounds(model)), f, **yaml_args)
 
     default_flux_limit = detect_best_flux_limit(model)
     if default_flux_limit is not None:
@@ -315,21 +313,21 @@ def write_yaml_model(model, dest='.', convert_medium=True):
     exchange = not convert_medium
     with open(os.path.join(dest, 'reactions.yaml'), 'w+') as f:
         reactions = list(model_reactions(model, exchange=exchange))
-        yaml.dump(reactions, f, **yaml_args)
+        yaml.safe_dump(reactions, f, **yaml_args)
 
     if convert_medium:
         with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
-            yaml.dump(model_medium(model, default_flux_limit), f, **yaml_args)
+            yaml.safe_dump(model_medium(model, default_flux_limit), f, **yaml_args)
 
     reaction_limits = list(model_reaction_limits(
         model, exchange, default_flux_limit))
     if len(reaction_limits) > 0:
         with open(os.path.join(dest, 'limits.yaml'), 'w+') as f:
-            yaml.dump(reaction_limits, f, **yaml_args)
+            yaml.safe_dump(reaction_limits, f, **yaml_args)
 
-    model_d = OrderedDict([('name', encode_utf8(model.name))])
+    model_d = OrderedDict([('name', model.name)])
     if model.biomass_reaction is not None:
-        model_d['biomass'] = encode_utf8(model.biomass_reaction)
+        model_d['biomass'] = model.biomass_reaction
     if default_flux_limit is not None:
         model_d['default_flux_limit'] = default_flux_limit
     model_d.update([
@@ -343,7 +341,7 @@ def write_yaml_model(model, dest='.', convert_medium=True):
         model_d['limits'] = [{'include': 'limits.yaml'}]
 
     with open(os.path.join(dest, 'model.yaml'), 'w+') as f:
-        yaml.dump(model_d, f, **yaml_args)
+        yaml.safe_dump(model_d, f, **yaml_args)
 
 
 def main():

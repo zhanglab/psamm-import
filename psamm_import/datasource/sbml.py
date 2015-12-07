@@ -188,6 +188,19 @@ class NonstrictImporter(BaseImporter):
 
         return model
 
+    def _parse_cobra_notes(self, element):
+        for note in element.xml_notes.itertext():
+            m = re.match(r'^([^:]+):(.+)$', note)
+            if m:
+                key, value = m.groups()
+                key = key.strip().lower().replace(' ', '_')
+                value = value.strip()
+                m = re.match(r'^"(.*)"$', value)
+                if m:
+                    value = m.group(1)
+                if value != '':
+                    yield key, value
+
     def _convert_compounds(self, compounds):
         """Convert SBML species entries to compounds."""
         for compound in compounds:
@@ -195,32 +208,25 @@ class NonstrictImporter(BaseImporter):
 
             # Extract information from notes
             if compound.xml_notes is not None:
-                for note in compound.xml_notes.itertext():
-                    m = re.match(r'FORMULA:(.+)$', note)
-                    if m:
-                        properties['formula'] = m.group(1).strip()
+                cobra_notes = dict(self._parse_cobra_notes(compound))
 
-                    m = re.match(r'CHARGE:(.+)$', note)
-                    if m:
-                        value = m.group(1).strip()
-                        try:
-                            properties['charge'] = int(value)
-                        except ValueError:
-                            logger.warning(
-                                'Unable to parse charge value for {} as an'
-                                ' integer: {}'.format(compound.id, value))
+                for key in ('formula', 'pubchem_id', 'chebi_id'):
+                    if key in cobra_notes:
+                        properties[key] = cobra_notes[key]
 
-                    m = re.match(r'KEGG ID:(.+)$', note)
-                    if m:
-                        properties['kegg'] = m.group(1).strip()
+                if 'kegg_id' in cobra_notes:
+                    properties['kegg'] = cobra_notes['kegg_id']
 
-                    m = re.match(r'PubChem ID:(.+)$', note)
-                    if m:
-                        properties['pubchem_id'] = m.group(1).strip()
-
-                    m = re.match(r'ChEBI ID:(.+)$', note)
-                    if m:
-                        properties['chebi_id'] = m.group(1).strip()
+                if 'charge' in cobra_notes:
+                    try:
+                        value = int(cobra_notes['charge'])
+                    except ValueError:
+                        logger.warning(
+                            'Unable to parse charge for {} as an'
+                            ' integer: {}'.format(
+                                compound.id, cobra_notes['charge']))
+                    else:
+                        properties['charge'] = value
 
             yield CompoundEntry(**properties)
 
@@ -231,17 +237,35 @@ class NonstrictImporter(BaseImporter):
 
             # Extract information from notes
             if reaction.xml_notes is not None:
-                for note in reaction.xml_notes.itertext():
-                    m = re.match(r'SUBSYSTEM:(.+)$', note)
-                    if m:
-                        properties['subsystem'] = m.group(1).strip()
+                cobra_notes = dict(self._parse_cobra_notes(reaction))
 
-                    m = re.match(r'GENE_ASSOCIATION:(.+)$', note)
-                    if m:
-                        assoc = self._try_parse_gene_association(
-                            reaction.id, m.group(1).strip())
-                        if assoc is not None:
-                            properties['genes'] = assoc
+                if 'subsystem' in cobra_notes:
+                    properties['subsystem'] = cobra_notes['subsystem']
+
+                if 'gene_association' in cobra_notes:
+                    assoc = self._try_parse_gene_association(
+                        reaction.id, cobra_notes['gene_association'])
+                    if assoc is not None:
+                        properties['genes'] = assoc
+
+                if 'ec_number' in cobra_notes:
+                    properties['ec'] = cobra_notes['ec_number']
+
+                if 'authors' in cobra_notes:
+                    properties['authors'] = [
+                        a.strip() for a in cobra_notes['authors'].split(';')]
+
+                if 'confidence' in cobra_notes:
+                    try:
+                        value = int(cobra_notes['confidence'])
+                    except ValueError:
+                        logger.warning(
+                            'Unable to parse confidence level for {} as an'
+                            ' integer: {}'.format(
+                                reaction.id, cobra_notes['confidence']))
+                        value = cobra_notes['confidence']
+
+                    properties['confidence'] = value
 
             # Extract flux limits provided in parameters
             if reaction.id in flux_limits:
