@@ -658,23 +658,12 @@ class ImportiSyn731(Importer):
             if compound_id.strip() == '':
                 continue
 
-            # Fixup model errors
-            #m = re.match(r'^(.*)(C\d{5})$', formula_neutral)
-            #if m:
-            #    formula_neutral = m.group(1)
-            #    kegg = m.group(2)
-
             name = None if name == '' else name
             try:
                 charge = None if charge == '' else int(charge)
             except ValueError:
                 charge = None
 
-            #if formula_neutral.strip() != '':
-            #    formula_neutral = Formula.parse(formula_neutral)
-            #    formula = formula_neutral
-            #else:
-            #    formula_neutral = None
             if formula.strip() != '':
                 formula = re.sub(r'-', 'noformula', formula)
                 formula = re.sub(r'noformula', ' ', formula)
@@ -778,12 +767,6 @@ class ImportiCce806(Importer):
             except ValueError:
                 charge = None
 
-            #if formula_neutral.strip() != '':
-            #    formula_neutral = formula.parse(formula_neutral)
-            #    #formula = formula_neutral
-            #else:
-            #    formula_neutral = None
-            #print(formula_neutral)
             if formula.strip() != '':
                 m = re.match(r'^(.*)-\d$', formula)
                 if m:
@@ -898,25 +881,6 @@ class ImportGSMN_TB(Importer):
                 compound_id = m.group(1)
 
             name = None if name.strip() == '' else name
-            #formula = None if formula.strip() == '' else formula
-
-            #if formula_neutral.strip() != '':
-            #    formula_neutral = Formula.parse(formula_neutral)
-            #    formula = formula_neutral
-            #else:
-            #    formula_neutral = None
-            #    if formula.strip() != '':
-            #        formula = Formula.parse(formula)
-            #    else:
-            #        formula = None
-
-            #try:
-            #    charge = None if charge == '' else int(charge)
-            #except ValueError:
-            #    charge = None
-
-            #cas = None if cas.strip() == '' or cas == 'None' else cas
-            #kegg = None if kegg.strip() == '' else kegg
 
             yield CompoundEntry(id=compound_id, name=name)
 
@@ -960,9 +924,6 @@ class ImportGSMN_TB(Importer):
 
             if reaction_id.startswith('%') or reaction_id.strip() == '':
                 continue
-            #if not reaction_id.stripstartswith('%'):
-            #    continue
-            #print(equation)
             genes = self._try_parse_gene_association(reaction_id, genes)
 
             name = None if name.strip() == '' else name
