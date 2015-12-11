@@ -664,12 +664,8 @@ class ImportiSyn731(Importer):
             except ValueError:
                 charge = None
 
-            if formula.strip() != '':
-                formula = re.sub(r'-', 'noformula', formula)
-                formula = re.sub(r'noformula', ' ', formula)
-                m = re.match(r'^(.*)-\d$', formula)
-                if m:
-                    formula = m.group(1)
+            formula = formula.strip()
+            if formula not in ('', '-', 'noformula'):
                 formula = Formula.parse(formula)
             else:
                 formula = None
