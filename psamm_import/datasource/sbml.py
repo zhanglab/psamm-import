@@ -114,6 +114,23 @@ class NonstrictImporter(BaseImporter):
     title = 'SBML model (non-strict)'
     generic = True
 
+    _COBRA_ESCAPES = {
+        '_DASH_': '-',
+        '_FSLASH_': '/',
+        '_BSLASH_': '\\',
+        '_LPAREN_': '(',
+        '_RPAREN_': ')',
+        '_LSQBKT_': '[',
+        '_RSQBKT_': ']',
+        '_COMMA_': ',',
+        '_PERIOD_': '.',
+        '_APOS_': "'",
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"'
+    }
+
     def _open_reader(self, f):
         try:
             return sbml.SBMLReader(f, strict=False, ignore_boundary=True)
@@ -235,6 +252,12 @@ class NonstrictImporter(BaseImporter):
                 if value != '':
                     yield key, value
 
+    def _convert_cobra_id(self, s):
+        """Convert COBRA-specific symbol escapes in IDs."""
+        for escape, symbol in iteritems(NonstrictImporter._COBRA_ESCAPES):
+            s = s.replace(escape, symbol)
+        return s
+
     def _convert_compounds(self, compounds, prefix=None):
         """Convert SBML species entries to compounds."""
         for compound in compounds:
@@ -243,6 +266,8 @@ class NonstrictImporter(BaseImporter):
             if prefix is not None:
                 if properties['id'].startswith(prefix):
                     properties['id'] = properties['id'][len(prefix):]
+
+            properties['id'] = self._convert_cobra_id(properties['id'])
 
             # Extract information from notes
             if compound.xml_notes is not None:
@@ -283,6 +308,8 @@ class NonstrictImporter(BaseImporter):
             if reaction_prefix is not None:
                 if properties['id'].startswith(reaction_prefix):
                     properties['id'] = properties['id'][len(reaction_prefix):]
+
+            properties['id'] = self._convert_cobra_id(properties['id'])
 
             # Extract information from notes
             if reaction.xml_notes is not None:
@@ -331,6 +358,8 @@ class NonstrictImporter(BaseImporter):
                 if (compound_prefix is not None and
                         name.startswith(compound_prefix)):
                     name = name[len(compound_prefix):]
+
+                name = self._convert_cobra_id(name)
 
                 compartment = compound.compartment
                 if (compartment_prefix is not None and
