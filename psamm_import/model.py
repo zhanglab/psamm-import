@@ -201,6 +201,11 @@ class Importer(object):
         return s
 
     def _try_parse_gene_association(self, reaction_id, s):
+        """Try to parse the given gene association rule.
+
+        Logs a warning if the association rule could not be parsed and returns
+        the original string. Otherwise, returns the boolean.Expression object.
+        """
         if s == '':
             return None
 
