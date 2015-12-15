@@ -649,8 +649,8 @@ class ImportiSyn731(Importer):
                 formula = None
 
             if kegg != 0 and kegg.strip() != '':
-                # Discard secondary KEGG IDs
-                kegg = kegg.split('|')[0]
+                kegg = kegg.split('|')
+                kegg = kegg if len(kegg) > 1 else kegg[0]
             else:
                 kegg = None
 
