@@ -87,7 +87,7 @@ class Importer(BaseImporter):
             id = compound['id']
             name = compound.get('name')
             charge = compound.get('charge')
-            formula = compound.get('formula')
+            formula = self._try_parse_formula(id, compound.get('formula'))
             yield CompoundEntry(id=id, name=name, charge=charge,
                                 formula=formula)
 

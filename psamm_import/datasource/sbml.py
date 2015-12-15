@@ -210,9 +210,13 @@ class NonstrictImporter(BaseImporter):
             if compound.xml_notes is not None:
                 cobra_notes = dict(self._parse_cobra_notes(compound))
 
-                for key in ('formula', 'pubchem_id', 'chebi_id'):
+                for key in ('pubchem_id', 'chebi_id'):
                     if key in cobra_notes:
                         properties[key] = cobra_notes[key]
+
+                if 'formula' in cobra_notes:
+                    properties['formula'] = self._try_parse_formula(
+                        compound.id, cobra_notes['formula'])
 
                 if 'kegg_id' in cobra_notes:
                     properties['kegg'] = cobra_notes['kegg_id']
