@@ -26,6 +26,7 @@ from six import iteritems, itervalues, text_type
 
 from psamm.datasource import sbml
 from psamm.expression import boolean
+from psamm.reaction import Compound, Reaction
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
                      ReactionEntry, MetabolicModel)
@@ -113,6 +114,23 @@ class NonstrictImporter(BaseImporter):
     title = 'SBML model (non-strict)'
     generic = True
 
+    _COBRA_ESCAPES = {
+        '_DASH_': '-',
+        '_FSLASH_': '/',
+        '_BSLASH_': '\\',
+        '_LPAREN_': '(',
+        '_RPAREN_': ')',
+        '_LSQBKT_': '[',
+        '_RSQBKT_': ']',
+        '_COMMA_': ',',
+        '_PERIOD_': '.',
+        '_APOS_': "'",
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"'
+    }
+
     def _open_reader(self, f):
         try:
             return sbml.SBMLReader(f, strict=False, ignore_boundary=True)
@@ -180,10 +198,43 @@ class NonstrictImporter(BaseImporter):
                 'Multiple reactions are used as the'
                 ' biomass reaction: {}'.format(objective_reactions))
 
+        # Find compartments
+        compartments = set()
+        for reaction in itervalues(model.reactions):
+            for compound, _ in reaction.equation.compounds:
+                compartments.add(compound.compartment)
+
+        # Detect prefixes
+        compound_prefix = None
+        if all(re.match(r'M_.+', c) for c in model.compounds):
+            compound_prefix = 'M_'
+            logger.info('Removing compound prefix {!r}'.format(
+                compound_prefix))
+
+        reaction_prefix = None
+        if all(re.match(r'R_.+', r) for r in model.reactions):
+            reaction_prefix = 'R_'
+            logger.info('Removing reaction prefix {!r}'.format(
+                reaction_prefix))
+
+        compartment_prefix = None
+        if all(re.match(r'C_.+', c) for c in compartments if c is not None):
+            compartment_prefix = 'C_'
+            logger.info('Removing compartment prefix {!r}'.format(
+                compartment_prefix))
+
         model = MetabolicModel(
             model.name,
-            self._convert_compounds(itervalues(model.compounds)),
-            self._convert_reactions(itervalues(model.reactions), flux_limits))
+            self._convert_compounds(itervalues(model.compounds),
+                                    prefix=compound_prefix),
+            self._convert_reactions(itervalues(model.reactions), flux_limits,
+                                    reaction_prefix=reaction_prefix,
+                                    compound_prefix=compound_prefix,
+                                    compartment_prefix=compartment_prefix))
+
+        if reaction_prefix is not None and biomass_reaction is not None:
+            if biomass_reaction.startswith(reaction_prefix):
+                biomass_reaction = biomass_reaction[len(reaction_prefix):]
         model.biomass_reaction = biomass_reaction
 
         return model
@@ -201,10 +252,22 @@ class NonstrictImporter(BaseImporter):
                 if value != '':
                     yield key, value
 
-    def _convert_compounds(self, compounds):
+    def _convert_cobra_id(self, s):
+        """Convert COBRA-specific symbol escapes in IDs."""
+        for escape, symbol in iteritems(NonstrictImporter._COBRA_ESCAPES):
+            s = s.replace(escape, symbol)
+        return s
+
+    def _convert_compounds(self, compounds, prefix=None):
         """Convert SBML species entries to compounds."""
         for compound in compounds:
             properties = compound.properties
+
+            if prefix is not None:
+                if properties['id'].startswith(prefix):
+                    properties['id'] = properties['id'][len(prefix):]
+
+            properties['id'] = self._convert_cobra_id(properties['id'])
 
             # Extract information from notes
             if compound.xml_notes is not None:
@@ -234,10 +297,19 @@ class NonstrictImporter(BaseImporter):
 
             yield CompoundEntry(**properties)
 
-    def _convert_reactions(self, reactions, flux_limits):
+    def _convert_reactions(self, reactions, flux_limits,
+                           compound_prefix=None, reaction_prefix=None,
+                           compartment_prefix=None):
         """Convert SBML reaction entries to reactions."""
+
         for reaction in reactions:
             properties = reaction.properties
+
+            if reaction_prefix is not None:
+                if properties['id'].startswith(reaction_prefix):
+                    properties['id'] = properties['id'][len(reaction_prefix):]
+
+            properties['id'] = self._convert_cobra_id(properties['id'])
 
             # Extract information from notes
             if reaction.xml_notes is not None:
@@ -278,5 +350,29 @@ class NonstrictImporter(BaseImporter):
                     properties['lower_flux'] = lower
                 if properties.get('upper_flux') is None and upper is not None:
                     properties['upper_flux'] = upper
+
+            # Convert compound IDs in reaction equation
+            compounds = []
+            for compound, value in properties['equation'].compounds:
+                name = compound.name
+                if (compound_prefix is not None and
+                        name.startswith(compound_prefix)):
+                    name = name[len(compound_prefix):]
+
+                name = self._convert_cobra_id(name)
+
+                compartment = compound.compartment
+                if (compartment_prefix is not None and
+                        compartment is not None and
+                        compartment.startswith(compartment_prefix)):
+                    compartment = compartment[len(compartment_prefix):]
+
+                compounds.append(
+                    (Compound(name, compartment=compartment), value))
+
+                direction = properties['equation'].direction
+                left = ((c, -v) for c, v in compounds if v < 0)
+                right = ((c, v) for c, v in compounds if v > 0)
+                properties['equation'] = Reaction(direction, left, right)
 
             yield ReactionEntry(**properties)
