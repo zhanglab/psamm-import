@@ -26,6 +26,8 @@ import logging
 from six import itervalues, text_type
 
 from psamm.expression import boolean
+from psamm.datasource.reaction import parse_reaction
+from psamm import formula
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +182,47 @@ class MetabolicModel(object):
 class Importer(object):
     """Base importer class."""
 
+    def _try_parse_formula(self, compound_id, s):
+        """Try to parse the given compound formula string.
+
+        Logs a warning if the formula could not be parsed.
+        """
+        s = s.strip()
+        if s == '':
+            return None
+
+        try:
+            # Do not return the parsed formula. For now it is better to keep
+            # the original formula string unchanged in all cases.
+            formula.Formula.parse(s)
+        except ValueError as e:
+            logger.warning('Unable to parse compound formula {}: {}'.format(
+                compound_id, s))
+
+        return s
+
+    def _try_parse_reaction(self, reaction_id, s,
+                            parser=parse_reaction, **kwargs):
+        """Try to parse the given reaction equation string.
+
+        Returns the parsed Reaction object, or raises an error if the reaction
+        could not be parsed.
+        """
+        try:
+            return parser(s, **kwargs)
+        except misc.ParseError as e:
+            if e.indicator is not None:
+                logger.error(u'{}\n{}\n{}'.format(
+                    str(e), s, e.indicator))
+            raise ParseError('Unable to parse reaction {}: {}'.format(
+                reaction_id, s))
+
     def _try_parse_gene_association(self, reaction_id, s):
+        """Try to parse the given gene association rule.
+
+        Logs a warning if the association rule could not be parsed and returns
+        the original string. Otherwise, returns the boolean.Expression object.
+        """
         if s == '':
             return None
 

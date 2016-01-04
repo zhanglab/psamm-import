@@ -24,12 +24,11 @@ import csv
 import glob
 
 import xlrd
+from six import string_types
 
 from psamm.datasource.misc import (parse_metnet_reaction,
                                    parse_sudensimple_reaction)
-from psamm.datasource import modelseed
 from psamm.reaction import Reaction, Compound
-from psamm.formula import Formula
 from psamm.expression import boolean
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
@@ -75,24 +74,25 @@ class ImportiMA945(Importer):
                 kegg = m.group(2)
 
             name = None if name == '' else name
-            name = re.sub(r'\'', '', name)
             try:
                 charge = None if charge == '' else int(charge)
             except ValueError:
                 charge = None
 
-            if formula_neutral.strip() != '':
-                formula_neutral = Formula.parse(formula_neutral)
-                formula = formula_neutral
+            formula_neutral = self._try_parse_formula(
+                compound_id, formula_neutral)
+
+            # Skip formulas where the charge value is accidentally in the
+            # formula column.
+            if isinstance(formula, string_types):
+                # Remove weird prefix. This could perhaps be charge values that
+                # were accidentally put into the formula column.
+                m = re.match(r'^(.*)-\d$', formula)
+                if m:
+                    formula = m.group(1)
+                formula = self._try_parse_formula(compound_id, formula)
             else:
-                formula_neutral = None
-                if formula.strip() != '':
-                    m = re.match(r'^(.*)-\d$', formula)
-                    if m:
-                        formula = m.group(1)
-                    formula = Formula.parse(formula)
-                else:
-                    formula = None
+                formula = None
 
             kegg = None if kegg == '' else kegg
 
@@ -130,7 +130,8 @@ class ImportiMA945(Importer):
             name = None if name == '' else name
 
             if equation != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -179,10 +180,8 @@ class ImportiRR1083(Importer):
             except ValueError:
                 charge = None
 
-            if formula_neutral.strip() != '':
-                formula_neutral = Formula.parse(formula_neutral)
-            else:
-                formula_neutral = None
+            formula_neutral = self._try_parse_formula(
+                compound_id, formula_neutral)
 
             kegg = None if kegg == '' else kegg
 
@@ -205,7 +204,8 @@ class ImportiRR1083(Importer):
             name = None if name == '' else name
 
             if equation != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -251,15 +251,9 @@ class ImportiJO1366(Importer):
             compound_id = re.match(r'^(.*)\[.\]$', compound_id).group(1)
             name = None if name.strip() == '' else name
 
-            if formula_neutral.strip() != '':
-                formula_neutral = Formula.parse(formula_neutral)
-                formula = formula_neutral
-            else:
-                formula_neutral = None
-                if formula.strip() != '':
-                    formula = Formula.parse(formula)
-                else:
-                    formula = None
+            formula_neutral = self._try_parse_formula(
+                compound_id, formula_neutral)
+            formula = self._try_parse_formula(compound_id, formula)
 
             try:
                 charge = None if charge == '' else int(charge)
@@ -287,7 +281,8 @@ class ImportiJO1366(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_sudensimple_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction)
             else:
                 equation = None
 
@@ -339,15 +334,9 @@ class EColiTextbookImport(Importer):
             name = None if name.strip() == '' else name
             formula = None if formula.strip() == '' else formula
 
-            if formula_neutral.strip() != '':
-                formula_neutral = Formula.parse(formula_neutral)
-                formula = formula_neutral
-            else:
-                formula_neutral = None
-                if formula.strip() != '':
-                    formula = Formula.parse(formula)
-                else:
-                    formula = None
+            formula_neutral = self._try_parse_formula(
+                compound_id, formula_neutral)
+            formula = self._try_parse_formula(compound_id, formula)
 
             try:
                 charge = None if charge == '' else int(charge)
@@ -375,7 +364,8 @@ class EColiTextbookImport(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -420,11 +410,7 @@ class ImportSTMv1_0(Importer):
                 continue
 
             name = None if name.strip() == '' else name.strip()
-
-            if formula.strip() != '':
-                formula = Formula.parse(formula)
-            else:
-                formula = None
+            formula = self._try_parse_formula(compound_id, formula)
 
             try:
                 charge = None if charge == '' else int(charge)
@@ -448,8 +434,9 @@ class ImportSTMv1_0(Importer):
             name = None if name.strip() == '' else name.strip()
 
             if equation.strip() != '':
-                equation = parse_sudensimple_reaction(equation,
-                                                      arrow_irrev='-->')
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction,
+                    arrow_irrev='-->')
             else:
                 equation = None
 
@@ -501,15 +488,9 @@ class ImportiJN746(Importer):
 
             name = None if name.strip() == '' else name
 
-            if formula_neutral.strip() != '':
-                formula_neutral = Formula.parse(formula_neutral)
-                formula = formula_neutral
-            else:
-                formula_neutral = None
-                if formula.strip() != '':
-                    formula = Formula.parse(formula)
-                else:
-                    formula = None
+            formula_neutral = self._try_parse_formula(
+                compound_id, formula_neutral)
+            formula = self._try_parse_formula(compound_id, formula)
 
             try:
                 charge = None if charge == '' else int(charge)
@@ -539,7 +520,8 @@ class ImportiJN746(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -606,7 +588,9 @@ class ImportiJP815(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_sudensimple_reaction(equation, '<==>', '-->')
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction,
+                    arrow_rev='<==>', arrow_irrev='-->')
 
                 # Rebuild reaction with compartment information
                 def translate(c, v):
@@ -659,36 +643,21 @@ class ImportiSyn731(Importer):
             if compound_id.strip() == '':
                 continue
 
-            # Fixup model errors
-            #m = re.match(r'^(.*)(C\d{5})$', formula_neutral)
-            #if m:
-            #    formula_neutral = m.group(1)
-            #    kegg = m.group(2)
-
             name = None if name == '' else name
             try:
                 charge = None if charge == '' else int(charge)
             except ValueError:
                 charge = None
 
-            #if formula_neutral.strip() != '':
-            #    formula_neutral = Formula.parse(formula_neutral)
-            #    formula = formula_neutral
-            #else:
-            #    formula_neutral = None
-            if formula.strip() != '':
-                formula = re.sub(r'-', 'noformula', formula)
-                formula = re.sub(r'noformula', ' ', formula)
-                m = re.match(r'^(.*)-\d$', formula)
-                if m:
-                    formula = m.group(1)
-                formula = Formula.parse(formula)
+            formula = formula.strip()
+            if formula not in ('', '-', 'noformula'):
+                formula = self._try_parse_formula(compound_id, formula)
             else:
                 formula = None
 
             if kegg != 0 and kegg.strip() != '':
-                # Discard secondary KEGG IDs
-                kegg = kegg.split('|')[0]
+                kegg = kegg.split('|')
+                kegg = kegg if len(kegg) > 1 else kegg[0]
             else:
                 kegg = None
 
@@ -710,13 +679,10 @@ class ImportiSyn731(Importer):
             if equation.strip() != '':
                 # check that this works correctly. should substitute the => for
                 # a space then =>. the double spaces should be ignored though.
-                equation = re.sub(r'=>', ' =>', equation)
-                equation = re.sub(r'< =>', '<=>', equation)
-                equation = re.sub(r'\s+', ' ', equation)
-                equation = re.sub(r'\(1\)\|', '(1) |', equation)
-                equation = re.sub(r'\+\(1\)', '+ (1)', equation)
-                equation = re.sub(r'\|\|', '|', equation)
-                equation = modelseed.parse_reaction(equation)
+                equation = re.sub(r'\s*\+\s*', ' + ', equation)
+                equation = re.sub(r'\|\[(\w)\]', r'[\1]|', equation)
+                equation = equation.replace('||', '|')
+                equation = self._try_parse_reaction(reaction_id, equation)
             else:
                 equation = None
 
@@ -779,19 +745,10 @@ class ImportiCce806(Importer):
             except ValueError:
                 charge = None
 
-            #if formula_neutral.strip() != '':
-            #    formula_neutral = formula.parse(formula_neutral)
-            #    #formula = formula_neutral
-            #else:
-            #    formula_neutral = None
-            #print(formula_neutral)
-            if formula.strip() != '':
-                m = re.match(r'^(.*)-\d$', formula)
-                if m:
-                    formula = m.group(1)
-                formula = Formula.parse(formula)
-            else:
-                formula = None
+            m = re.match(r'^(.*)-\d$', formula)
+            if m:
+                formula = m.group(1)
+            formula = self._try_parse_formula(compound_id, formula)
 
             kegg = None if kegg == '' else kegg
 
@@ -837,8 +794,11 @@ class ImportiCce806(Importer):
             name = None if name == '' else name
 
             if equation.strip() != '':
-                equation = re.sub(r'\s+', ' ', equation)
-                equation = parse_metnet_reaction(equation)
+                equation = re.sub(r'\s*\+\s*', ' + ', equation)
+                equation = re.sub(r'\s*-->\s*', ' --> ', equation)
+                equation = re.sub(r'\s*<==>\s*', ' <==> ', equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -899,25 +859,6 @@ class ImportGSMN_TB(Importer):
                 compound_id = m.group(1)
 
             name = None if name.strip() == '' else name
-            #formula = None if formula.strip() == '' else formula
-
-            #if formula_neutral.strip() != '':
-            #    formula_neutral = Formula.parse(formula_neutral)
-            #    formula = formula_neutral
-            #else:
-            #    formula_neutral = None
-            #    if formula.strip() != '':
-            #        formula = Formula.parse(formula)
-            #    else:
-            #        formula = None
-
-            #try:
-            #    charge = None if charge == '' else int(charge)
-            #except ValueError:
-            #    charge = None
-
-            #cas = None if cas.strip() == '' or cas == 'None' else cas
-            #kegg = None if kegg.strip() == '' else kegg
 
             yield CompoundEntry(id=compound_id, name=name)
 
@@ -961,15 +902,13 @@ class ImportGSMN_TB(Importer):
 
             if reaction_id.startswith('%') or reaction_id.strip() == '':
                 continue
-            #if not reaction_id.stripstartswith('%'):
-            #    continue
-            #print(equation)
             genes = self._try_parse_gene_association(reaction_id, genes)
 
             name = None if name.strip() == '' else name
             if equation.strip() != '':
-                equation = re.sub(r'\s+', ' ', equation)
-                equation = parse_sudensimple_reaction(equation, '=')
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction,
+                    arrow_rev='=')
                 rdir = Reaction.Bidir if fluxbound != 0 else Reaction.Right
                 equation = Reaction(rdir, equation.left, equation.right)
             else:
@@ -1015,11 +954,7 @@ class ImportiNJ661(Importer):
                 continue
 
             name = name if name.strip() != '' else None
-
-            if formula.strip() != '':
-                formula = Formula.parse(formula)
-            else:
-                formula = None
+            formula = self._try_parse_formula(compound_id, formula)
 
             try:
                 charge = None if charge == '' else int(charge)
@@ -1048,7 +983,8 @@ class ImportiNJ661(Importer):
             name = None if name.strip() == '' else name
 
             if equation.strip() != '':
-                equation = parse_metnet_reaction(equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
             else:
                 equation = None
 
@@ -1091,10 +1027,7 @@ class ImportGenericiNJ661mv(Importer):
             compound_id = re.match(r'^(.*)\[.\]$', compound_id).group(1)
             name = name if name.strip() != '' else None
 
-            if formula.strip() != '':
-                formula = Formula.parse(formula)
-            else:
-                formula = None
+            formula = self._try_parse_formula(compound_id, formula)
 
             yield CompoundEntry(id=compound_id, name=name, formula=formula)
 
@@ -1113,10 +1046,9 @@ class ImportGenericiNJ661mv(Importer):
             # Biomass reaction is not specified in this table
             if (equation.strip() != '' and
                     reaction_id != 'biomass_Mtb_9_60atp_test_NOF'):
-                # Remove multiple adjacent whitespace characters
-                equation = re.sub(r'\s+', ' ', equation)
-                equation = parse_sudensimple_reaction(
-                    equation, arrow_rev='<=>', arrow_irrev='->')
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_sudensimple_reaction,
+                    arrow_rev='<=>', arrow_irrev='->')
             else:
                 equation = None
 
@@ -1193,15 +1125,9 @@ class ImportShewanellaOng(Importer):
                 r'^(.*)\[.\]$', compound_id).group(1).lower()
             name = name if name.strip() != '' else None
 
-            if formula_neutral.strip() != '':
-                formula_neutral = Formula.parse(formula_neutral)
-                formula = formula_neutral
-            else:
-                formula_neutral = None
-                if formula.strip() != '':
-                    formula = Formula.parse(formula)
-                else:
-                    formula = None
+            formula_neutral = self._try_parse_formula(
+                compound_id, formula_neutral)
+            formula = self._try_parse_formula(compound_id, formula)
 
             try:
                 charge = None if charge == '' else int(charge)
@@ -1260,7 +1186,9 @@ class ImportShewanellaOng(Importer):
 
             # Reaction equation
             if equation.strip() != '':
-                equation = parse_metnet_reaction(equation)
+                equation = re.sub(r'\s*\+\s*', ' + ', equation)
+                equation = self._try_parse_reaction(
+                    reaction_id, equation, parser=parse_metnet_reaction)
                 equation = equation.translated_compounds(translate)
             else:
                 equation = None
@@ -1412,7 +1340,7 @@ class ImportModelSEED(Importer):
             name = name if name.strip() != '' else None
 
             if equation != '' and 'NONE' not in equation:
-                equation = modelseed.parse_reaction(equation)
+                equation = self._try_parse_reaction(reaction_id, equation)
             else:
                 continue
 
