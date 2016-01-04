@@ -26,7 +26,7 @@ import logging
 from six import itervalues, text_type
 
 from psamm.expression import boolean
-from psamm.datasource import modelseed
+from psamm.datasource.reaction import parse_reaction
 from psamm import formula
 
 logger = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ class Importer(object):
         return s
 
     def _try_parse_reaction(self, reaction_id, s,
-                            parser=modelseed.parse_reaction, **kwargs):
+                            parser=parse_reaction, **kwargs):
         """Try to parse the given reaction equation string.
 
         Returns the parsed Reaction object, or raises an error if the reaction
@@ -210,7 +210,10 @@ class Importer(object):
         """
         try:
             return parser(s, **kwargs)
-        except modelseed.ParseError as e:
+        except misc.ParseError as e:
+            if e.indicator is not None:
+                logger.error(u'{}\n{}\n{}'.format(
+                    str(e), s, e.indicator))
             raise ParseError('Unable to parse reaction {}: {}'.format(
                 reaction_id, s))
 

@@ -29,7 +29,6 @@ import yaml
 import pkg_resources
 from six import iteritems, text_type, string_types
 
-from psamm.datasource import modelseed
 from psamm.reaction import Reaction
 from psamm.expression import boolean
 from psamm.formula import Formula
@@ -61,7 +60,7 @@ def boolean_expression_representer(dumper, data):
 
 
 def reaction_representer(dumper, data):
-    return dumper.represent_unicode(modelseed.format_reaction(data))
+    return dumper.represent_unicode(text_type(data))
 
 
 def formula_representer(dumper, data):

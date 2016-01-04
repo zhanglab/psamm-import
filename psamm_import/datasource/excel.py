@@ -28,7 +28,6 @@ from six import string_types
 
 from psamm.datasource.misc import (parse_metnet_reaction,
                                    parse_sudensimple_reaction)
-from psamm.datasource import modelseed
 from psamm.reaction import Reaction, Compound
 from psamm.expression import boolean
 
@@ -680,12 +679,9 @@ class ImportiSyn731(Importer):
             if equation.strip() != '':
                 # check that this works correctly. should substitute the => for
                 # a space then =>. the double spaces should be ignored though.
-                equation = re.sub(r'=>', ' =>', equation)
-                equation = re.sub(r'< =>', '<=>', equation)
-                equation = re.sub(r'\s+', ' ', equation)
-                equation = re.sub(r'\(1\)\|', '(1) |', equation)
-                equation = re.sub(r'\+\(1\)', '+ (1)', equation)
-                equation = re.sub(r'\|\|', '|', equation)
+                equation = re.sub(r'\s*\+\s*', ' + ', equation)
+                equation = re.sub(r'\|\[(\w)\]', r'[\1]|', equation)
+                equation = equation.replace('||', '|')
                 equation = self._try_parse_reaction(reaction_id, equation)
             else:
                 equation = None
@@ -798,7 +794,9 @@ class ImportiCce806(Importer):
             name = None if name == '' else name
 
             if equation.strip() != '':
-                equation = re.sub(r'\s+', ' ', equation)
+                equation = re.sub(r'\s*\+\s*', ' + ', equation)
+                equation = re.sub(r'\s*-->\s*', ' --> ', equation)
+                equation = re.sub(r'\s*<==>\s*', ' <==> ', equation)
                 equation = self._try_parse_reaction(
                     reaction_id, equation, parser=parse_metnet_reaction)
             else:
@@ -908,7 +906,6 @@ class ImportGSMN_TB(Importer):
 
             name = None if name.strip() == '' else name
             if equation.strip() != '':
-                equation = re.sub(r'\s+', ' ', equation)
                 equation = self._try_parse_reaction(
                     reaction_id, equation, parser=parse_sudensimple_reaction,
                     arrow_rev='=')
@@ -1049,8 +1046,6 @@ class ImportGenericiNJ661mv(Importer):
             # Biomass reaction is not specified in this table
             if (equation.strip() != '' and
                     reaction_id != 'biomass_Mtb_9_60atp_test_NOF'):
-                # Remove multiple adjacent whitespace characters
-                equation = re.sub(r'\s+', ' ', equation)
                 equation = self._try_parse_reaction(
                     reaction_id, equation, parser=parse_sudensimple_reaction,
                     arrow_rev='<=>', arrow_irrev='->')
@@ -1191,6 +1186,7 @@ class ImportShewanellaOng(Importer):
 
             # Reaction equation
             if equation.strip() != '':
+                equation = re.sub(r'\s*\+\s*', ' + ', equation)
                 equation = self._try_parse_reaction(
                     reaction_id, equation, parser=parse_metnet_reaction)
                 equation = equation.translated_compounds(translate)
