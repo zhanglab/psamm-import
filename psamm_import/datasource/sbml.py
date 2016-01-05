@@ -226,7 +226,8 @@ class NonstrictImporter(BaseImporter):
         model = MetabolicModel(
             model.name,
             self._convert_compounds(itervalues(model.compounds),
-                                    prefix=compound_prefix),
+                                    compound_prefix=compound_prefix,
+                                    compartment_prefix=compartment_prefix),
             self._convert_reactions(itervalues(model.reactions), flux_limits,
                                     reaction_prefix=reaction_prefix,
                                     compound_prefix=compound_prefix,
@@ -258,14 +259,20 @@ class NonstrictImporter(BaseImporter):
             s = s.replace(escape, symbol)
         return s
 
-    def _convert_compounds(self, compounds, prefix=None):
+    def _convert_compounds(self, compounds, compound_prefix=None,
+                           compartment_prefix=None):
         """Convert SBML species entries to compounds."""
         for compound in compounds:
             properties = compound.properties
 
-            if prefix is not None:
-                if properties['id'].startswith(prefix):
-                    properties['id'] = properties['id'][len(prefix):]
+            if compound_prefix is not None:
+                if properties['id'].startswith(compound_prefix):
+                    properties['id'] = properties['id'][len(compound_prefix):]
+
+            if 'compartment' in properties and compartment_prefix is not None:
+                if properties['compartment'].startswith(compartment_prefix):
+                    properties['compartment'] = (
+                        properties['compartment'][len(compartment_prefix):])
 
             properties['id'] = self._convert_cobra_id(properties['id'])
 
