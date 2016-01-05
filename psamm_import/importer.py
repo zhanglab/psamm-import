@@ -42,7 +42,8 @@ from .model import (ParseError, ModelLoadError,
                     detect_extracellular_compartment,
                     convert_exchange_to_compounds,
                     infer_compartment_entries,
-                    infer_compartment_adjacency)
+                    infer_compartment_adjacency,
+                    merge_equivalent_compounds)
 
 # Threshold for putting reactions into subsystem files
 _MAX_REACTION_COUNT = 3
@@ -450,6 +451,9 @@ def main():
                               ' exchange compound file.'))
     parser.add_argument('--split-subsystem', action='store_true',
                         help='Enable splitting reaction files by subsystem')
+    parser.add_argument('--merge-compounds', action='store_true',
+                        help=('Merge identical compounds occuring in various'
+                              ' compartments.'))
     parser.add_argument('--force', action='store_true',
                         help='Enable overwriting model files')
     parser.add_argument('format', help='Format to import ("list" to see all)')
@@ -520,6 +524,15 @@ def main():
         logger.error('Failed to parse model!', exc_info=True)
         logger.error(text_type(e))
         sys.exit(-1)
+
+    if args.merge_compounds:
+        compounds_before = len(model.compounds)
+        merge_equivalent_compounds(model)
+        if len(model.compounds) < compounds_before:
+            logger.info(
+                'Merged {} compound entries into {} entries by'
+                ' removing duplicates in various compartments'.format(
+                    compounds_before, len(model.compounds)))
 
     model.print_summary()
 

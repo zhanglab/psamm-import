@@ -30,7 +30,7 @@ from six import text_type
 from .importer import write_yaml_model
 from .datasource import cobrajson
 from .util import mkdir_p
-from .model import ParseError, ModelLoadError
+from .model import ParseError, ModelLoadError, merge_equivalent_compounds
 
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,9 @@ def main():
                               ' exchange compound file.'))
     parser.add_argument('--split-subsystem', action='store_true',
                         help='Enable splitting reaction files by subsystem')
+    parser.add_argument('--merge-compounds', action='store_true',
+                        help=('Merge identical compounds occuring in various'
+                              ' compartments.'))
     parser.add_argument('--force', action='store_true',
                         help='Enable overwriting model files')
     parser.add_argument('id', help='BiGG model to import ("list" to see all)')
@@ -88,6 +91,15 @@ def main():
         logger.error('Failed to parse model!', exc_info=True)
         logger.error(text_type(e))
         sys.exit(-1)
+
+    if args.merge_compounds:
+        compounds_before = len(model.compounds)
+        merge_equivalent_compounds(model)
+        if len(model.compounds) < compounds_before:
+            logger.info(
+                'Merged {} compound entries into {} entries by'
+                ' removing duplicates in various compartments'.format(
+                    compounds_before, len(model.compounds)))
 
     model.print_summary()
 

@@ -30,7 +30,7 @@ from six import iteritems, itervalues, text_type
 from psamm.expression import boolean
 from psamm.datasource.reaction import (parse_reaction,
                                        ParseError as ReactionParseError)
-from psamm.datasource.entry import DictCompartmentEntry
+from psamm.datasource.entry import DictCompoundEntry, DictCompartmentEntry
 from psamm import formula
 from psamm.reaction import Direction
 
@@ -386,3 +386,120 @@ def infer_compartment_adjacency(model):
                 continue
             model.compartment_adjacency.setdefault(c1, set()).add(c2)
             model.compartment_adjacency.setdefault(c2, set()).add(c1)
+
+
+def merge_equivalent_compounds(model):
+    """Merge equivalent compounds in various compartments.
+
+    Tries to detect and merge compound entries that represent the same
+    compound in different compartments. The entries are only merged if all
+    properties are equivalent. Compound entries must have an ID with a suffix
+    of an underscore followed by the compartment ID. This suffix will be
+    stripped and compounds with identical IDs are merged if the properties
+    are identical.
+    """
+    def dicts_are_compatible(d1, d2):
+        return all(key not in d1 or key not in d2 or d1[key] == d2[key]
+                   for key in set(d1) | set(d2))
+
+    compound_compartment = {}
+    inelegible = set()
+    for reaction in itervalues(model.reactions):
+        equation = reaction.equation
+        if equation is None:
+            continue
+
+        for compound, _ in equation.compounds:
+            compartment = compound.compartment
+            if compartment is not None:
+                compound_compartment[compound.name] = compartment
+                if not compound.name.endswith('_{}'.format(compartment)):
+                    inelegible.add(compound.name)
+
+    compound_groups = {}
+    for compound_id, compartment in iteritems(compound_compartment):
+        if compound_id in inelegible:
+            continue
+
+        suffix = '_{}'.format(compound_compartment[compound_id])
+        if compound_id.endswith(suffix):
+            group_name = compound_id[:-len(suffix)]
+            compound_groups.setdefault(group_name, set()).add(compound_id)
+
+    compound_mapping = {}
+    merged_compounds = {}
+    for group, compound_set in iteritems(compound_groups):
+        # Try to merge as many compounds as possible
+        merged = []
+        for compound_id in compound_set:
+            props = dict(model.compounds[compound_id].properties)
+            props.pop('id', None)
+            props.pop('compartment', None)
+            for merged_props, merged_set in merged:
+                if dicts_are_compatible(props, merged_props):
+                    merged_set.add(compound_id)
+                    merged_props.update(props)
+                    break
+                else:
+                    keys = set(key for key in set(props) | set(merged_props)
+                               if key not in props or
+                               key not in merged_props or
+                               props[key] != merged_props[key])
+                    logger.info(
+                        'Unable to merge {} into {}, difference in'
+                        ' keys: {}'.format(
+                            compound_id, ', '.join(merged_set),
+                            ', '.join(keys)))
+            else:
+                merged.append((props, {compound_id}))
+
+        if len(merged) == 1:
+            # Merge into one set with the group name
+            merged_props, merged_set = merged[0]
+
+            for compound_id in merged_set:
+                compound_mapping[compound_id] = group
+            merged_compounds[group] = merged_props
+        else:
+            # Since we cannot merge all compounds, create new group names
+            # based on the group and compartments.
+            for merged_props, merged_set in merged:
+                compartments = set(compound_compartment[c] for c in merged_set)
+                merged_name = '{}_{}'.format(
+                    group, '_'.join(sorted(compartments)))
+
+                for compound_id in merged_set:
+                    compound_mapping[compound_id] = merged_name
+                merged_compounds[merged_name] = merged_props
+
+    # Translate reaction compounds
+    for reaction in itervalues(model.reactions):
+        equation = reaction.equation
+        if equation is None:
+            continue
+
+        reaction.properties['equation'] = equation.translated_compounds(
+            lambda c: compound_mapping.get(c, c))
+
+    # Translate compound entries
+    new_compounds = []
+    for compound in itervalues(model.compounds):
+        if compound.id not in compound_mapping:
+            new_compounds.append(compound)
+        else:
+            group = compound_mapping[compound.id]
+            if group not in merged_compounds:
+                continue
+            props = merged_compounds.pop(group)
+            props['id'] = group
+            new_compounds.append(DictCompoundEntry(
+                props, filemark=compound.filemark))
+
+    model.compounds.clear()
+    model.compounds.update((c.id, c) for c in new_compounds)
+
+    # Translate exchange
+    for compound in compound_mapping:
+        if compound in model.exchange:
+            value = model.exchange.pop(compound)
+            model.exchange[compound_mapping[compound]] = value
