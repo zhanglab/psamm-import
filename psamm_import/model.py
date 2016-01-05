@@ -169,10 +169,10 @@ class MetabolicModel(object):
     def _check_reaction_compounds(self):
         """Check that reaction compounds are defined in the model."""
         undefined = set()
-        for reaction in itervalues(self.reactions):
+        for reaction in itervalues(self._reactions):
             if reaction.equation is not None:
                 for compound, value in reaction.equation.compounds:
-                    if compound.name not in self.compounds:
+                    if compound.name not in self._compounds:
                         undefined.add((reaction.id, compound.name))
 
         if len(undefined) > 0:
