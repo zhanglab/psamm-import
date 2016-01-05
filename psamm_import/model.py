@@ -23,7 +23,7 @@ result of parsing a model before it is converted to YAML format.
 
 import logging
 
-from six import itervalues, text_type
+from six import iteritems, itervalues, text_type
 
 from psamm.expression import boolean
 from psamm.datasource.reaction import parse_reaction
@@ -48,9 +48,10 @@ class _BaseEntry(object):
     """Base entry in loaded model."""
 
     def __init__(self, **kwargs):
-        if 'id' not in kwargs:
+        self._values = {key: value for key, value in iteritems(kwargs)
+                        if value is not None}
+        if 'id' not in self._values:
             raise ValueError('No id was provided')
-        self._values = kwargs
         self._id = self._values['id']
 
     @property
