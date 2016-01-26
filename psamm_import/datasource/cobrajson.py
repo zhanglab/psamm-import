@@ -24,7 +24,7 @@ import logging
 
 from six import iteritems
 
-from psamm.reaction import Reaction, Compound
+from psamm.reaction import Reaction, Compound, Direction
 
 from ..model import (Importer as BaseImporter, ModelLoadError,
                      ParseError, CompoundEntry, ReactionEntry, MetabolicModel)
@@ -98,7 +98,7 @@ class Importer(BaseImporter):
                 left.append((Compound(metabolite), -value))
             elif value > 0:
                 right.append((Compound(metabolite), value))
-        return Reaction(Reaction.Bidir, left, right)
+        return Reaction(Direction.Both, left, right)
 
     def _read_reactions(self, doc):
         for reaction in doc['reactions']:

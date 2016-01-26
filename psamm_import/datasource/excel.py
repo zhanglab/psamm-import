@@ -28,7 +28,7 @@ from six import string_types
 
 from psamm.datasource.misc import (parse_metnet_reaction,
                                    parse_sudensimple_reaction)
-from psamm.reaction import Reaction, Compound
+from psamm.reaction import Reaction, Compound, Direction
 from psamm.expression import boolean
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
@@ -909,7 +909,7 @@ class ImportGSMN_TB(Importer):
                 equation = self._try_parse_reaction(
                     reaction_id, equation, parser=parse_sudensimple_reaction,
                     arrow_rev='=')
-                rdir = Reaction.Bidir if fluxbound != 0 else Reaction.Right
+                rdir = Direction.Both if fluxbound != 0 else Direction.Forward
                 equation = Reaction(rdir, equation.left, equation.right)
             else:
                 equation = None
