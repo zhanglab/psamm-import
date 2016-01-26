@@ -378,8 +378,6 @@ class NonstrictImporter(BaseImporter):
                     (Compound(name, compartment=compartment), value))
 
                 direction = properties['equation'].direction
-                left = ((c, -v) for c, v in compounds if v < 0)
-                right = ((c, v) for c, v in compounds if v > 0)
-                properties['equation'] = Reaction(direction, left, right)
+                properties['equation'] = Reaction(direction, compounds)
 
             yield ReactionEntry(**properties)
