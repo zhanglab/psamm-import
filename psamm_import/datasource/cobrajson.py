@@ -87,7 +87,13 @@ class Importer(BaseImporter):
             id = compound['id']
             name = compound.get('name')
             charge = compound.get('charge')
-            formula = self._try_parse_formula(id, compound.get('formula'))
+
+            formula_string = compound.get('formula')
+            if formula_string is not None:
+                formula = self._try_parse_formula(id, formula_string)
+            else:
+                formula = None
+
             yield CompoundEntry(id=id, name=name, charge=charge,
                                 formula=formula)
 
