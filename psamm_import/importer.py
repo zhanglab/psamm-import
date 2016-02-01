@@ -29,7 +29,7 @@ import yaml
 import pkg_resources
 from six import iteritems, text_type, string_types
 
-from psamm.reaction import Reaction
+from psamm.reaction import Reaction, Direction
 from psamm.expression import boolean
 from psamm.formula import Formula
 
@@ -82,12 +82,10 @@ def detect_best_flux_limit(model):
             continue
 
         equation = reaction.properties['equation']
-        if ('upper_flux' in reaction.properties and
-                equation.direction != Reaction.Left):
+        if 'upper_flux' in reaction.properties and equation.direction.forward:
             upper_flux = reaction.properties['upper_flux']
             flux_limit_count[upper_flux] += 1
-        if ('lower_flux' in reaction.properties and
-                equation.direction != Reaction.Right):
+        if 'lower_flux' in reaction.properties and equation.direction.reverse:
             lower_flux = reaction.properties['lower_flux']
             flux_limit_count[-lower_flux] += 1
 
@@ -193,12 +191,12 @@ def model_medium(model, default_flux_limit):
         lower_flux, upper_flux = None, None
         if 'lower_flux' in reaction.properties:
             lower_flux = reaction.properties['lower_flux'] * abs(value)
-        elif equation.direction == Reaction.Right:
+        elif equation.direction == Direction.Forward:
             lower_flux = 0.0
 
         if 'upper_flux' in reaction.properties:
             upper_flux = reaction.properties['upper_flux'] * abs(value)
-        elif equation.direction == Reaction.Left:
+        elif equation.direction == Direction.Reverse:
             upper_flux = 0.0
 
         # If the stoichiometric value of the reaction is reversed, the flux
@@ -246,12 +244,12 @@ def model_reaction_limits(model, exchange=False, default_flux_limit=None):
         # default it does not need to be included in the output.
         lower_default, upper_default = None, None
         if default_flux_limit is not None:
-            if equation.direction != Reaction.Right:
+            if equation.direction.reverse:
                 lower_default = -default_flux_limit
             else:
                 lower_default = 0.0
 
-            if equation.direction != Reaction.Left:
+            if equation.direction.forward:
                 upper_default = default_flux_limit
             else:
                 upper_default = 0.0

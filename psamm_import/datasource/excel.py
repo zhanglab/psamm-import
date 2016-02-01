@@ -28,7 +28,7 @@ from six import string_types
 
 from psamm.datasource.misc import (parse_metnet_reaction,
                                    parse_sudensimple_reaction)
-from psamm.reaction import Reaction, Compound
+from psamm.reaction import Reaction, Compound, Direction
 from psamm.expression import boolean
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
@@ -597,9 +597,9 @@ class ImportiJP815(Importer):
                     compartment = 'e' if c.name[0] == 'E' else None
                     return Compound(c.name[1:], compartment=compartment), v
 
-                left = (translate(c, v) for c, v in equation.left)
-                right = (translate(c, v) for c, v in equation.right)
-                equation = Reaction(equation.direction, left, right)
+                equation = Reaction(
+                    equation.direction,
+                    (translate(c, v) for c, v in equation.compounds))
             else:
                 equation = None
 
@@ -909,8 +909,8 @@ class ImportGSMN_TB(Importer):
                 equation = self._try_parse_reaction(
                     reaction_id, equation, parser=parse_sudensimple_reaction,
                     arrow_rev='=')
-                rdir = Reaction.Bidir if fluxbound != 0 else Reaction.Right
-                equation = Reaction(rdir, equation.left, equation.right)
+                rdir = Direction.Both if fluxbound != 0 else Direction.Forward
+                equation = Reaction(rdir, equation.compounds)
             else:
                 equation = None
 
