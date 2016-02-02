@@ -49,7 +49,7 @@ class BaseImporter(Importer):
             if len(sources) == 0:
                 raise ModelLoadError('No .sbml file found in source directory')
             elif len(sources) > 1:
-                raise ModeLoadError(
+                raise ModelLoadError(
                     'More than one .sbml file found in source directory')
             return sources[0]
         return source
