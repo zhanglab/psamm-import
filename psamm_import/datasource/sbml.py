@@ -22,10 +22,9 @@ import re
 import glob
 import logging
 
-from six import iteritems, itervalues, text_type
+from six import iteritems, itervalues
 
 from psamm.datasource import sbml
-from psamm.expression import boolean
 from psamm.reaction import Compound, Reaction
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,

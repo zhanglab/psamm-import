@@ -27,7 +27,7 @@ from collections import OrderedDict, Counter
 
 import yaml
 import pkg_resources
-from six import iteritems, text_type, string_types
+from six import iteritems, text_type
 
 from psamm.reaction import Reaction, Direction
 from psamm.expression import boolean

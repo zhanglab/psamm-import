@@ -197,7 +197,7 @@ class Importer(object):
             # Do not return the parsed formula. For now it is better to keep
             # the original formula string unchanged in all cases.
             formula.Formula.parse(s)
-        except ValueError as e:
+        except ValueError:
             logger.warning('Unable to parse compound formula {}: {}'.format(
                 compound_id, s))
 

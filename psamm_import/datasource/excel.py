@@ -26,12 +26,12 @@ import glob
 import xlrd
 from six import string_types
 
-from psamm.datasource.reaction import parse_reaction, ReactionParser
+from psamm.datasource.reaction import ReactionParser
 from psamm.reaction import Reaction, Compound, Direction
 from psamm.expression import boolean
 
-from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
-                     ReactionEntry, MetabolicModel)
+from ..model import (Importer, ModelLoadError, CompoundEntry, ReactionEntry,
+                     MetabolicModel)
 
 
 class ImportiMA945(Importer):

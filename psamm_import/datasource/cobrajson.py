@@ -27,7 +27,7 @@ from six import iteritems
 from psamm.reaction import Reaction, Compound, Direction
 
 from ..model import (Importer as BaseImporter, ModelLoadError,
-                     ParseError, CompoundEntry, ReactionEntry, MetabolicModel)
+                     CompoundEntry, ReactionEntry, MetabolicModel)
 
 logger = logging.getLogger(__name__)
 
