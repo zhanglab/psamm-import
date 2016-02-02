@@ -102,7 +102,6 @@ class Importer(BaseImporter):
                      for metabolite, value in iteritems(doc))
         return Reaction(Direction.Both, compounds)
 
-
     def _read_reactions(self, doc):
         for reaction in doc['reactions']:
             id = reaction['id']
