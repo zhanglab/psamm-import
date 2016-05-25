@@ -17,13 +17,15 @@
 
 """Generic native model importer"""
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import sys
 import os
 import argparse
 import logging
+import math
 from collections import OrderedDict, Counter
+from decimal import Decimal
 
 import yaml
 import pkg_resources
@@ -36,6 +38,9 @@ from psamm.formula import Formula
 from .util import mkdir_p
 from .model import ParseError, ModelLoadError
 
+
+# Threshold for converting reactions into dictionary representation.
+_MAX_REACTION_LENGTH = 10
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +65,58 @@ def boolean_expression_representer(dumper, data):
 
 
 def reaction_representer(dumper, data):
-    return dumper.represent_unicode(text_type(data))
+    """Generate a parsable reaction representation to the YAML parser.
+
+    Check the number of compounds in the reaction, if it is larger than 10,
+    then transform the reaction data into a list of directories with all
+    attributes in the reaction; otherwise, just return the text_type format
+    of the reaction data.
+    """
+
+    if len(data.compounds) > _MAX_REACTION_LENGTH:
+        def dict_make(compounds):
+            for compound, value in compounds:
+                yield OrderedDict([
+                    ('id', text_type(compound.name)),
+                    ('compartment', compound.compartment),
+                    ('value', value)])
+
+        left = list(dict_make(data.left))
+        right = list(dict_make(data.right))
+
+        direction = data.direction == Direction.Both
+
+        reaction = OrderedDict()
+        reaction['reversible'] = direction
+        if data.direction == Direction.Reverse:
+            reaction['left'] = right
+            reaction['right'] = left
+        else:
+            reaction['left'] = left
+            reaction['right'] = right
+
+        return dumper.represent_data(reaction)
+    else:
+        return dumper.represent_unicode(text_type(data))
 
 
 def formula_representer(dumper, data):
     return dumper.represent_unicode(text_type(data))
+
+
+def decimal_representer(dumper, data):
+    # Code from float_representer in PyYAML.
+    if math.isnan(data):
+        value = '.nan'
+    elif data == float('inf'):
+        value = '.inf'
+    elif data == float('-inf'):
+        value = '-.inf'
+    else:
+        value = text_type(data).lower()
+        if '.' not in value and 'e' in value:
+            value = value.replace('e', '.0e', 1)
+    return dumper.represent_scalar('tag:yaml.org,2002:float', value)
 
 
 def detect_best_flux_limit(model):
@@ -285,6 +337,7 @@ def write_yaml_model(model, dest='.', convert_medium=True):
         boolean.Expression, boolean_expression_representer)
     yaml.SafeDumper.add_representer(Reaction, reaction_representer)
     yaml.SafeDumper.add_representer(Formula, formula_representer)
+    yaml.SafeDumper.add_representer(Decimal, decimal_representer)
 
     yaml.SafeDumper.ignore_aliases = lambda *args: True
 
