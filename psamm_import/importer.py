@@ -27,7 +27,7 @@ from collections import OrderedDict, Counter
 
 import yaml
 import pkg_resources
-from six import iteritems, text_type, string_types
+from six import iteritems, text_type
 
 from psamm.reaction import Reaction, Direction
 from psamm.expression import boolean
@@ -140,7 +140,7 @@ def model_reactions(model, exchange=False):
             key: i for i, key in enumerate(
                 ['name', 'genes', 'equation', 'subsystem', 'ec'])}
         prop_keys = (set(reaction.properties) -
-            {'lower_flux', 'upper_flux', 'reversible'})
+                     {'lower_flux', 'upper_flux', 'reversible'})
         for prop in sorted(prop_keys, key=lambda x: (order.get(x, 1000), x)):
             if reaction.properties[prop] is not None:
                 d[prop] = reaction.properties[prop]
@@ -314,7 +314,8 @@ def write_yaml_model(model, dest='.', convert_medium=True):
 
     if convert_medium:
         with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
-            yaml.safe_dump(model_medium(model, default_flux_limit), f, **yaml_args)
+            yaml.safe_dump(model_medium(model, default_flux_limit), f,
+                           **yaml_args)
 
     reaction_limits = list(model_reaction_limits(
         model, exchange, default_flux_limit))

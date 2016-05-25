@@ -26,7 +26,8 @@ import logging
 from six import iteritems, itervalues, text_type
 
 from psamm.expression import boolean
-from psamm.datasource.reaction import parse_reaction
+from psamm.datasource.reaction import (parse_reaction,
+                                       ParseError as ReactionParseError)
 from psamm import formula
 
 logger = logging.getLogger(__name__)
@@ -196,7 +197,7 @@ class Importer(object):
             # Do not return the parsed formula. For now it is better to keep
             # the original formula string unchanged in all cases.
             formula.Formula.parse(s)
-        except ValueError as e:
+        except ValueError:
             logger.warning('Unable to parse compound formula {}: {}'.format(
                 compound_id, s))
 
@@ -211,7 +212,7 @@ class Importer(object):
         """
         try:
             return parser(s, **kwargs)
-        except misc.ParseError as e:
+        except ReactionParseError as e:
             if e.indicator is not None:
                 logger.error(u'{}\n{}\n{}'.format(
                     str(e), s, e.indicator))

@@ -22,10 +22,9 @@ import re
 import glob
 import logging
 
-from six import iteritems, itervalues, text_type
+from six import iteritems, itervalues
 
 from psamm.datasource import sbml
-from psamm.expression import boolean
 from psamm.reaction import Compound, Reaction
 
 from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
@@ -49,7 +48,7 @@ class BaseImporter(Importer):
             if len(sources) == 0:
                 raise ModelLoadError('No .sbml file found in source directory')
             elif len(sources) > 1:
-                raise ModeLoadError(
+                raise ModelLoadError(
                     'More than one .sbml file found in source directory')
             return sources[0]
         return source

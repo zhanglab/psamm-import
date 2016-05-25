@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2016  Jon Lund Steffensen <jon_steffensen@uri.edu>
 # Copyright 2015  Keith Dufault-Thompson <keitht547@my.uri.edu>
 
 """Importers for various Excel formats."""
@@ -26,13 +26,12 @@ import glob
 import xlrd
 from six import string_types
 
-from psamm.datasource.misc import (parse_metnet_reaction,
-                                   parse_sudensimple_reaction)
+from psamm.datasource.reaction import ReactionParser
 from psamm.reaction import Reaction, Compound, Direction
 from psamm.expression import boolean
 
-from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
-                     ReactionEntry, MetabolicModel)
+from ..model import (Importer, ModelLoadError, CompoundEntry, ReactionEntry,
+                     MetabolicModel)
 
 
 class ImportiMA945(Importer):
@@ -102,6 +101,12 @@ class ImportiMA945(Importer):
                                 charge=charge, kegg=kegg)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<==>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows, parse_global=True)
+
         sheet = self._book.sheet_by_name('reactions')
         for i in range(1, sheet.nrows):
             reaction_id, name, equation, genes = (
@@ -131,7 +136,7 @@ class ImportiMA945(Importer):
 
             if equation != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_metnet_reaction)
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -191,6 +196,12 @@ class ImportiRR1083(Importer):
                                 charge=charge, kegg=kegg)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<==>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows, parse_global=True)
+
         sheet = self._book.sheet_by_name('Gene Protein Reaction iRR1083')
         for i in range(3, sheet.nrows):
             genes, protein, reaction_id, name, equation, subsystem = (
@@ -205,7 +216,7 @@ class ImportiRR1083(Importer):
 
             if equation != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_metnet_reaction)
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -269,6 +280,12 @@ class ImportiJO1366(Importer):
                                 charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
+        arrows = (
+            ('->', Direction.Forward),
+            ('<=>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows)
+
         sheet = self._book.sheet_by_name('Table 2')
         for i in range(1, sheet.nrows):
             (reaction_id, name, equation, _, genes, _, subsystem, ec,
@@ -282,7 +299,7 @@ class ImportiJO1366(Importer):
 
             if equation.strip() != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_sudensimple_reaction)
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -352,6 +369,12 @@ class EColiTextbookImport(Importer):
                                 charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<==>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows, parse_global=True)
+
         sheet = self._book.sheet_by_name('reactions')
         for i in range(1, sheet.nrows):
             (reaction_id, name, equation, subsystem, ec, _, _, _, _, _,
@@ -365,7 +388,7 @@ class EColiTextbookImport(Importer):
 
             if equation.strip() != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_metnet_reaction)
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -423,6 +446,12 @@ class ImportSTMv1_0(Importer):
                                 formula=formula, charge=charge, kegg=kegg)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<=>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows)
+
         sheet = self._book.sheet_by_name('SI Tables - S2a - Reactions')
         for i in range(4, sheet.nrows):
             reaction_id, name, equation, genes, _, subsystem = (
@@ -435,8 +464,7 @@ class ImportSTMv1_0(Importer):
 
             if equation.strip() != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_sudensimple_reaction,
-                    arrow_irrev='-->')
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -509,6 +537,12 @@ class ImportiJN746(Importer):
                                 charge=charge, kegg=kegg, cas=cas)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<==>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows, parse_global=True)
+
         sheet = self._reaction_book.sheet_by_name('Additional file 9')
         for i in range(1, sheet.nrows):
             reaction_id, name, equation, subsystem, ec, _, genes = (
@@ -521,7 +555,7 @@ class ImportiJN746(Importer):
 
             if equation.strip() != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_metnet_reaction)
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -577,6 +611,12 @@ class ImportiJP815(Importer):
             yield CompoundEntry(id=compound_id, name=name, kegg=kegg)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<==>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows)
+
         sheet = self._book.sheet_by_name('Reactions')
         for i in range(1, sheet.nrows):
             (reaction_id, name, equation, _, _, _, _, _, _, subsystem,
@@ -589,8 +629,7 @@ class ImportiJP815(Importer):
 
             if equation.strip() != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_sudensimple_reaction,
-                    arrow_rev='<==>', arrow_irrev='-->')
+                    reaction_id, equation, parser=parser.parse)
 
                 # Rebuild reaction with compartment information
                 def translate(c, v):
@@ -762,6 +801,12 @@ class ImportiCce806(Importer):
                                 kegg=kegg, cas=cas)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<==>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows, parse_global=True)
+
         sheet = self._reaction_book.sheet_by_name('S1 - Reactions')
         for i in range(1, sheet.nrows):
             reaction_id, name, equation, _, genes, subsystem, ec = (
@@ -798,7 +843,7 @@ class ImportiCce806(Importer):
                 equation = re.sub(r'\s*-->\s*', ' --> ', equation)
                 equation = re.sub(r'\s*<==>\s*', ' <==> ', equation)
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_metnet_reaction)
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -895,6 +940,12 @@ class ImportGSMN_TB(Importer):
         yield create_missing('GLUCAN', 'Glucanate')
 
     def _read_reactions(self):
+        arrows = (
+            ('->', Direction.Forward),
+            ('=', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows)
+
         sheet = self._reaction_book.sheet_by_name('File 4')
         for i in range(4, sheet.nrows):
             (reaction_id, equation, fluxbound, _, ec, genes, name,
@@ -907,8 +958,7 @@ class ImportGSMN_TB(Importer):
             name = None if name.strip() == '' else name
             if equation.strip() != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_sudensimple_reaction,
-                    arrow_rev='=')
+                    reaction_id, equation, parser=parser.parse)
                 rdir = Direction.Both if fluxbound != 0 else Direction.Forward
                 equation = Reaction(rdir, equation.compounds)
             else:
@@ -965,6 +1015,12 @@ class ImportiNJ661(Importer):
                                 charge=charge)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<==>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows, parse_global=True)
+
         sheet = self._book.sheet_by_name('iNJ661')
         for i in range(5, sheet.nrows):
             reaction_id, name, equation, _, subsystem, _, genes = (
@@ -984,7 +1040,7 @@ class ImportiNJ661(Importer):
 
             if equation.strip() != '':
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_metnet_reaction)
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -1032,6 +1088,12 @@ class ImportGenericiNJ661mv(Importer):
             yield CompoundEntry(id=compound_id, name=name, formula=formula)
 
     def _read_reactions(self):
+        arrows = (
+            ('->', Direction.Forward),
+            ('<=>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows)
+
         sheet = self._book.sheet_by_name('reactions')
         for i in range(1, sheet.nrows):
             reaction_id, name, equation, genes, _, subsystem = (
@@ -1047,8 +1109,7 @@ class ImportGenericiNJ661mv(Importer):
             if (equation.strip() != '' and
                     reaction_id != 'biomass_Mtb_9_60atp_test_NOF'):
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_sudensimple_reaction,
-                    arrow_rev='<=>', arrow_irrev='->')
+                    reaction_id, equation, parser=parser.parse)
             else:
                 equation = None
 
@@ -1146,6 +1207,12 @@ class ImportShewanellaOng(Importer):
                                 kegg=kegg, cas=cas)
 
     def _read_reactions(self):
+        arrows = (
+            ('-->', Direction.Forward),
+            ('<==>', Direction.Both)
+        )
+        parser = ReactionParser(arrows=arrows, parse_global=True)
+
         sheet = self._book.sheet_by_name('S2-Reactions')
         for i in range(2, sheet.nrows):
             reaction_id, _, _, _, _, _, name, equation = sheet.row_values(
@@ -1188,7 +1255,7 @@ class ImportShewanellaOng(Importer):
             if equation.strip() != '':
                 equation = re.sub(r'\s*\+\s*', ' + ', equation)
                 equation = self._try_parse_reaction(
-                    reaction_id, equation, parser=parse_metnet_reaction)
+                    reaction_id, equation, parser=parser.parse)
                 equation = equation.translated_compounds(translate)
             else:
                 equation = None
