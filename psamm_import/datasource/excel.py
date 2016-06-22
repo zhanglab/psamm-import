@@ -399,7 +399,7 @@ class EColiTextbookImport(Importer):
                                 equation=equation, subsystem=subsystem, ec=ec)
 
 
-class ImportSTMv1_0(Importer):
+class ImportSTMv1_0(Importer):  # noqa
     name = 'STM_v1.0'
     title = ('Salmonella enterica STM_v1.0 (Excel format),'
              ' Thiele et al., 2011')
@@ -861,7 +861,7 @@ class ImportiCce806(Importer):
                                 equation=equation, subsystem=subsystem, ec=ec)
 
 
-class ImportGSMN_TB(Importer):
+class ImportGSMN_TB(Importer):  # noqa
     name = 'GSMN-TB'
     title = ('Mycobacterium tuberculosis GSMN-TB (Excel format),'
              ' Beste et al., 2007')
@@ -1270,7 +1270,7 @@ class ImportShewanellaOng(Importer):
                                 equation=equation, subsystem=subsystem)
 
 
-class ImportiMR1_799(ImportShewanellaOng):
+class ImportiMR1_799(ImportShewanellaOng):  # noqa
     name = 'imr1_799'
     title = ('Shewanella oneidensis MR-1 iMR1_799 (Excel format),'
              ' Ong et al., 2014')
@@ -1279,7 +1279,7 @@ class ImportiMR1_799(ImportShewanellaOng):
         return self.import_model_named(self.title, 0, source)
 
 
-class ImportiMR4_812(ImportShewanellaOng):
+class ImportiMR4_812(ImportShewanellaOng):  # noqa
     name = 'imr4_812'
     title = ('Shewanella sp. MR-4 iMR4_812 (Excel format),'
              ' Ong et al., 2014')
@@ -1288,7 +1288,7 @@ class ImportiMR4_812(ImportShewanellaOng):
         return self.import_model_named(self.title, 1, source)
 
 
-class ImportiW3181_789(ImportShewanellaOng):
+class ImportiW3181_789(ImportShewanellaOng):  # noqa
     name = 'iw3181_789'
     title = ('Shewanella sp. W3-18-1 iW3181_789 (Excel format),'
              ' Ong et al., 2014')
@@ -1297,7 +1297,7 @@ class ImportiW3181_789(ImportShewanellaOng):
         return self.import_model_named(self.title, 2, source)
 
 
-class ImportiOS217_672(ImportShewanellaOng):
+class ImportiOS217_672(ImportShewanellaOng):  # noqa
     name = 'ios217_672'
     title = ('Shewanella denitrificans OS217 iOS217_672 (Excel format),'
              ' Ong et al., 2014')
