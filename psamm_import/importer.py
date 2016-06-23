@@ -173,7 +173,7 @@ def model_compounds(model):
         yield d
 
 
-def reactions_to_files(model, dest, yaml_args, exchange):
+def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
     """Turns the reaction subsystems into their own files.
 
     If a subsystem has a number of reactions over the threshold, it gets its
@@ -188,47 +188,66 @@ def reactions_to_files(model, dest, yaml_args, exchange):
         exchange: flag for whether to include exchange reactions
     """
 
-    subsystems = {}
-    common_reactions = set()
-    reaction_files = set()
+    def safe_file_name(origin_name):
+        safe_name = re.sub(
+            r'\W+', '_', origin_name, flags=re.UNICODE)
+        safe_name = re.sub(
+            r'_+', '_', safe_name.lower(), flags=re.UNICODE)
+        safe_name = safe_name.strip('_')
+        return safe_name
 
-    for reaction_id, reaction in sorted(iteritems(model.reactions)):
-        if reaction.subsystem is not None:
-            subsystems.setdefault(reaction.subsystem, set()).add(reaction)
+    common_reactions = []
+    reaction_files = []
+    if not split_subsystem:
+        common_reactions = [
+            reaction for _, reaction in sorted(iteritems(model.reactions))]
+        reactions_dump = list(
+            model_reactions(common_reactions, exchange=exchange))
+        if len(reactions_dump) > 0:
+            reaction_file = 'reactions.yaml'
+            with open(os.path.join(dest, reaction_file), 'w') as f:
+                yaml.safe_dump(reactions_dump, f, **yaml_args)
+            reaction_files.append(reaction_file)
+    else:
+        subsystems = {}
+        for _, reaction in sorted(iteritems(model.reactions)):
+            if reaction.subsystem is not None:
+                subsystem_file = safe_file_name(reaction.subsystem)
+                subsystems.setdefault(subsystem_file, []).append(reaction)
+            else:
+                common_reactions.append(reaction)
 
-    subsystem_folder = 'reactions'
-    sub_existance = False
-    for subsystem, reactions in iteritems(subsystems):
-        if len(reactions) < _MAX_REACTION_COUNT:
-            for reaction in reactions:
-                common_reactions.add(reaction)
-        else:
-            reactions_dump = list(
-                model_reactions(reactions, exchange=exchange))
-            if len(reactions_dump) > 0:
-                mkdir_p(os.path.join(dest, subsystem_folder))
-                subsystem_file = re.sub(
-                    r'\W+', '_', subsystem, flags=re.UNICODE)
-                subsystem_file = re.sub(
-                    r'_+', '_', subsystem_file.lower(), flags=re.UNICODE)
-                subsystem_file = os.path.join(
-                    subsystem_folder, '{}.yaml'.format(subsystem_file))
+        subsystem_folder = 'reactions'
+        sub_existance = False
+        for subsystem_file, reactions in iteritems(subsystems):
+            if len(reactions) < _MAX_REACTION_COUNT:
+                for reaction in reactions:
+                    common_reactions.append(reaction)
+            else:
+                reactions_dump = list(
+                    model_reactions(reactions, exchange=exchange))
+                if len(reactions_dump) > 0:
+                    mkdir_p(os.path.join(dest, subsystem_folder))
+                    subsystem_file = os.path.join(
+                        subsystem_folder, '{}.yaml'.format(subsystem_file))
 
-                with open(os.path.join(dest, subsystem_file), 'w') as f:
-                    yaml.safe_dump(reactions_dump, f, **yaml_args)
-                reaction_files.add(subsystem_file)
-                if not sub_existance:
+                    with open(os.path.join(dest, subsystem_file), 'w') as f:
+                        yaml.safe_dump(reactions_dump, f, **yaml_args)
+                    reaction_files.append(subsystem_file)
                     sub_existance = True
 
-    reactions_dump = list(model_reactions(common_reactions, exchange=exchange))
-    if sub_existance:
-        reaction_file = os.path.join(subsystem_folder, 'other_reactions.yaml')
-    else:
-        reaction_file = 'reactions.yaml'
-    if len(common_reactions) > 0:
-        with open(os.path.join(dest, reaction_file), 'w') as f:
-            yaml.safe_dump(reactions_dump, f, **yaml_args)
-        reaction_files.add(reaction_file)
+        reaction_files.sort()
+        reactions_dump = list(
+            model_reactions(common_reactions, exchange=exchange))
+        if sub_existance:
+            reaction_file = os.path.join(
+                subsystem_folder, 'other_reactions.yaml')
+        else:
+            reaction_file = 'reactions.yaml'
+        if len(reactions_dump) > 0:
+            with open(os.path.join(dest, reaction_file), 'w') as f:
+                yaml.safe_dump(reactions_dump, f, **yaml_args)
+            reaction_files.append(reaction_file)
 
     return reaction_files
 
@@ -395,7 +414,8 @@ def model_reaction_limits(model, exchange=False, default_flux_limit=None):
             yield d
 
 
-def write_yaml_model(model, dest='.', convert_medium=True):
+def write_yaml_model(model, dest='.', convert_medium=True,
+                     split_subsystem=True):
     """Write the given MetabolicModel to YAML files in dest folder
 
     The parameter ``convert_medium`` indicates whether the exchange reactions
@@ -432,7 +452,8 @@ def write_yaml_model(model, dest='.', convert_medium=True):
         logger.info('Converting exchange reactions to medium definition')
 
     exchange = not convert_medium
-    reaction_files = reactions_to_files(model, dest, yaml_args, exchange)
+    reaction_files = reactions_to_files(
+        model, dest, yaml_args, exchange, split_subsystem)
 
     if convert_medium:
         with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
@@ -446,16 +467,16 @@ def write_yaml_model(model, dest='.', convert_medium=True):
             yaml.safe_dump(reaction_limits, f, **yaml_args)
 
     model_d = OrderedDict([('name', model.name)])
-    model_d['compounds'] = [{'include': 'compounds.yaml'}]
 
     if model.biomass_reaction is not None:
         model_d['biomass'] = model.biomass_reaction
     if default_flux_limit is not None:
         model_d['default_flux_limit'] = default_flux_limit
 
-    model_d['reaction'] = []
+    model_d['compounds'] = [{'include': 'compounds.yaml'}]
+    model_d['reactions'] = []
     for reaction_file in reaction_files:
-        model_d['reaction'].append({'include': reaction_file})
+        model_d['reactions'].append({'include': reaction_file})
 
     if convert_medium:
         model_d['media'] = [{'include': 'medium.yaml'}]
@@ -476,6 +497,8 @@ def main():
                         help='Destination directory (default is ".")')
     parser.add_argument('--no-medium', action='store_true',
                         help='Disable importing exchange reactions as medium')
+    parser.add_argument('--split-subsystem', action='store_true',
+                        help='Enable splitting reaction files by subsystem')
     parser.add_argument('format', help='Format to import ("list" to see all)')
 
     args = parser.parse_args()
@@ -551,4 +574,5 @@ def main():
     dest = args.dest
     mkdir_p(dest)
 
-    write_yaml_model(model, dest, convert_medium=not args.no_medium)
+    write_yaml_model(model, dest, convert_medium=not args.no_medium,
+                     split_subsystem=args.split_subsystem)
