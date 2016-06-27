@@ -225,6 +225,12 @@ def model_medium(model, default_flux_limit):
             continue
 
         if len(equation.compounds) != 1:
+            # Provide warning for exchange reactions with more than
+            # one compound, they won't be put into the medium definition
+            if (len(equation.left) == 0) != (len(equation.right) == 0):
+                logger.warning('Exchange reaction {} has more than one'
+                               ' compound, it was not converted to'
+                               ' medium compounds'.format(reaction.id))
             continue
 
         compound, value = equation.compounds[0]
