@@ -106,7 +106,9 @@ def formula_representer(dumper, data):
 
 def decimal_representer(dumper, data):
     # Code from float_representer in PyYAML.
-    if math.isnan(data):
+    if data % 1 == 0:
+        return dumper.represent_int(int(data))
+    elif math.isnan(data):
         value = '.nan'
     elif data == float('inf'):
         value = '.inf'
