@@ -21,6 +21,7 @@ import os
 import glob
 import json
 import logging
+import decimal
 
 from six import iteritems
 
@@ -30,6 +31,14 @@ from ..model import (Importer as BaseImporter, ModelLoadError,
                      CompoundEntry, ReactionEntry, MetabolicModel)
 
 logger = logging.getLogger(__name__)
+
+
+def _float_parser(num_str):
+    num = float(num_str)
+    if num.is_integer():
+        return int(num)
+    else:
+        return decimal.Decimal(num_str)
 
 
 class Importer(BaseImporter):
@@ -58,7 +67,7 @@ class Importer(BaseImporter):
         return source
 
     def _import(self, file):
-        model_doc = json.load(file)
+        model_doc = json.load(file, parse_float=_float_parser)
         model = MetabolicModel(
             model_doc.get('id', 'COBRA JSON model'),
             self._read_compounds(model_doc), self._read_reactions(model_doc))
