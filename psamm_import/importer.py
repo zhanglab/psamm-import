@@ -408,10 +408,14 @@ def model_reaction_limits(model, exchange=False, default_flux_limit=None):
 
         if lower_flux is not None or upper_flux is not None:
             d = OrderedDict([('reaction', reaction_id)])
-            if lower_flux is not None:
-                d['lower'] = lower_flux
-            if upper_flux is not None:
-                d['upper'] = upper_flux
+            if (lower_flux is not None and upper_flux is not None and
+                    lower_flux == upper_flux):
+                d['fixed'] = upper_flux
+            else:
+                if lower_flux is not None:
+                    d['lower'] = lower_flux
+                if upper_flux is not None:
+                    d['upper'] = upper_flux
 
             yield d
 
