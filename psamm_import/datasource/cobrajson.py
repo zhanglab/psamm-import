@@ -106,16 +106,24 @@ class Importer(BaseImporter):
             yield CompoundEntry(id=id, name=name, charge=charge,
                                 formula=formula)
 
-    def _parse_reaction_equation(self, doc):
+    def _parse_reaction_equation(self, r):
         compounds = ((Compound(metabolite), value)
-                     for metabolite, value in iteritems(doc))
-        return Reaction(Direction.Both, compounds)
+                     for metabolite, value in iteritems(r['metabolites']))
+        if (r.get('lower_bound') == 0 and
+                r.get('upper_bound') != 0):
+            direction = Direction.Forward
+        elif (r.get('lower_bound') != 0 and
+              r.get('upper_bound') == 0):
+            direction = Direction.Reverse
+        else:
+            direction = Direction.Both
+        return Reaction(direction, compounds)
 
     def _read_reactions(self, doc):
         for reaction in doc['reactions']:
             id = reaction['id']
             name = reaction.get('name', None)
-            equation = self._parse_reaction_equation(reaction['metabolites'])
+            equation = self._parse_reaction_equation(reaction)
             lower_flux = reaction.get('lower_bound')
             upper_flux = reaction.get('upper_bound')
             subsystem = reaction.get('subsystem')
