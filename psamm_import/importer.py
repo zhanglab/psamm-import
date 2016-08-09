@@ -125,8 +125,7 @@ def decimal_representer(dumper, data):
 
 
 def detect_extracellular(model):
-    """Detect the identifier for equations with extracellular compartments,
-        as it's not always the same.
+    """Detect the identifier for equations with extracellular compartments.
     """
     extracellular_key = Counter()
 
@@ -139,7 +138,11 @@ def detect_extracellular(model):
             compound, _ = equation.compounds[0]
             compartment = compound.compartment
             extracellular_key[compartment] += 1
-    best_key, _ = extracellular_key.most_common(1)[0]
+    if len(extracellular_key) == 0:
+        return None
+    else:
+        best_key, _ = extracellular_key.most_common(1)[0]
+    logger.info('{} is extracellular compartment'.format(best_key))
     return best_key
 
 
@@ -244,7 +247,8 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
                     common_reactions.append(reaction)
             else:
                 reactions_dump = list(
-                    model_reactions(common_reactions, model, exchange=exchange))
+                    model_reactions(common_reactions, model,
+                                    exchange=exchange))
                 if len(reactions_dump) > 0:
                     mkdir_p(os.path.join(dest, subsystem_folder))
                     subsystem_file = os.path.join(
@@ -308,20 +312,6 @@ def model_reactions(reactions, model, exchange=False):
 def model_medium(model, default_flux_limit):
     """Return medium definition as YAML dict"""
 
-    # Count and use the most common compartment as the default compartment
-    compartment_count = Counter()
-    for reaction_id, reaction in iteritems(model.reactions):
-        equation = reaction.properties.get('equation')
-        if equation is None or len(equation.compounds) != 1:
-            continue
-        compound, _ = equation.compounds[0]
-        compartment_count[compound.compartment] += 1
-
-    if len(compartment_count) > 0:
-        default_compartment, _ = compartment_count.most_common(1)[0]
-    else:
-        default_compartment = None
-
     # Generate list of compounds in medium
     compounds = []
     for reaction_id, reaction in sorted(iteritems(model.reactions)):
@@ -339,7 +329,7 @@ def model_medium(model, default_flux_limit):
             continue
 
         compound, value = equation.compounds[0]
-        if(compound.compartment != model.extracellular_compartment and
+        if (compound.compartment != model.extracellular_compartment and
                 len(equation.compounds) == 1):
             continue
 
@@ -373,8 +363,6 @@ def model_medium(model, default_flux_limit):
                 -lower_flux if lower_flux is not None else None)
 
         c = OrderedDict([('id', compound.name)])
-        if compound.compartment != default_compartment:
-            c['compartment'] = compound.compartment
         c['reaction'] = reaction_id
 
         # Assign flux limits if different than the defaults. Also, add 0 so
@@ -387,8 +375,6 @@ def model_medium(model, default_flux_limit):
         compounds.append(c)
 
     medium = OrderedDict([('name', 'Default medium')])
-    if default_compartment is not None:
-        medium['compartment'] = default_compartment
     medium['compounds'] = compounds
 
     return medium
@@ -497,7 +483,8 @@ def write_yaml_model(model, dest='.', convert_medium=True,
         model_d['biomass'] = model.biomass_reaction
     if default_flux_limit is not None:
         model_d['default_flux_limit'] = default_flux_limit
-
+    if model.extracellular_compartment != 'e':
+        model_d['extracellular'] = model.extracellular_compartment
     model_d['compounds'] = [{'include': 'compounds.yaml'}]
     model_d['reactions'] = []
     for reaction_file in reaction_files:
