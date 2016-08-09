@@ -15,14 +15,14 @@
 #
 # Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
-"""Utilities"""
+"""Utility functions."""
 
 import os
 import errno
 
 
 def mkdir_p(path):
-    """Make directory path if it does not already exist"""
+    """Make directory path if it does not already exist."""
     try:
         os.makedirs(path)
     except OSError as e:

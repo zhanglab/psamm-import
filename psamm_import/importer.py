@@ -15,7 +15,7 @@
 #
 # Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
-"""Generic native model importer"""
+"""Generic native model importer."""
 
 from __future__ import print_function, unicode_literals
 
@@ -51,23 +51,23 @@ logger = logging.getLogger(__name__)
 # Define custom dict representers for YAML
 # This allows reading/writing Python OrderedDicts in the correct order.
 # See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts  # noqa
-def dict_representer(dumper, data):
+def _dict_representer(dumper, data):
     return dumper.represent_dict(iteritems(data))
 
 
-def dict_constructor(loader, node):
+def _dict_constructor(loader, node):
     return OrderedDict(loader.construct_pairs(node))
 
 
-def set_representer(dumper, data):
+def _set_representer(dumper, data):
     return dumper.represent_list(iter(data))
 
 
-def boolean_expression_representer(dumper, data):
+def _boolean_expression_representer(dumper, data):
     return dumper.represent_unicode(text_type(data))
 
 
-def reaction_representer(dumper, data):
+def _reaction_representer(dumper, data):
     """Generate a parsable reaction representation to the YAML parser.
 
     Check the number of compounds in the reaction, if it is larger than 10,
@@ -75,7 +75,6 @@ def reaction_representer(dumper, data):
     attributes in the reaction; otherwise, just return the text_type format
     of the reaction data.
     """
-
     if len(data.compounds) > _MAX_REACTION_LENGTH:
         def dict_make(compounds):
             for compound, value in compounds:
@@ -103,11 +102,11 @@ def reaction_representer(dumper, data):
         return dumper.represent_unicode(text_type(data))
 
 
-def formula_representer(dumper, data):
+def _formula_representer(dumper, data):
     return dumper.represent_unicode(text_type(data))
 
 
-def decimal_representer(dumper, data):
+def _decimal_representer(dumper, data):
     # Code from float_representer in PyYAML.
     if data % 1 == 0:
         return dumper.represent_int(int(data))
@@ -125,8 +124,7 @@ def decimal_representer(dumper, data):
 
 
 def detect_extracellular(model):
-    """Detect the identifier for equations with extracellular compartments.
-    """
+    """Detect the identifier for equations with extracellular compartments."""
     extracellular_key = Counter()
 
     for reaction_id, reaction in iteritems(model.reactions):
@@ -147,13 +145,12 @@ def detect_extracellular(model):
 
 
 def detect_best_flux_limit(model):
-    """Detect the best default flux limit to use for model output
+    """Detect the best default flux limit to use for model output.
 
     The default flux limit does not change the model but selecting a good
     value reduced the amount of output produced and reduces clutter in the
     output files.
     """
-
     flux_limit_count = Counter()
 
     for reaction_id, reaction in iteritems(model.reactions):
@@ -176,8 +173,7 @@ def detect_best_flux_limit(model):
 
 
 def model_compounds(model):
-    """Yield model compounds as YAML dicts"""
-
+    """Yield model compounds as YAML dicts."""
     for compound_id, compound in sorted(iteritems(model.compounds)):
         d = OrderedDict()
         d['id'] = compound_id
@@ -196,7 +192,7 @@ def model_compounds(model):
 
 
 def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
-    """Turns the reaction subsystems into their own files.
+    """Turn the reaction subsystems into their own files.
 
     If a subsystem has a number of reactions over the threshold, it gets its
     own YAML file. All other reactions, those that don't have a subsystem or
@@ -209,7 +205,6 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
         yaml_args: YAML style format arguments
         exchange: flag for whether to include exchange reactions
     """
-
     def safe_file_name(origin_name):
         safe_name = re.sub(
             r'\W+', '_', origin_name, flags=re.UNICODE)
@@ -276,8 +271,7 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
 
 
 def model_reactions(reactions, model, exchange=False):
-    """Yield list of reactions as YAML dicts"""
-
+    """Yield list of reactions as YAML dicts."""
     for reaction in reactions:
         d = OrderedDict()
         d['id'] = reaction.id
@@ -310,8 +304,7 @@ def model_reactions(reactions, model, exchange=False):
 
 
 def model_medium(model, default_flux_limit):
-    """Return medium definition as YAML dict"""
-
+    """Return medium definition as YAML dict."""
     # Generate list of compounds in medium
     compounds = []
     for reaction_id, reaction in sorted(iteritems(model.reactions)):
@@ -381,8 +374,7 @@ def model_medium(model, default_flux_limit):
 
 
 def model_reaction_limits(model, exchange=False, default_flux_limit=None):
-    """Yield model reaction limits as YAML dicts"""
-
+    """Yield model reaction limits as YAML dicts."""
     for reaction_id, reaction in sorted(iteritems(model.reactions)):
         # Check whether reaction is exchange
         equation = reaction.properties.get('equation')
@@ -426,24 +418,24 @@ def model_reaction_limits(model, exchange=False, default_flux_limit=None):
 
 def write_yaml_model(model, dest='.', convert_medium=True,
                      split_subsystem=True):
-    """Write the given MetabolicModel to YAML files in dest folder
+    """Write the given MetabolicModel to YAML files in dest folder.
 
     The parameter ``convert_medium`` indicates whether the exchange reactions
     should be converted automatically to a medium file.
     """
-    yaml.SafeDumper.add_representer(OrderedDict, dict_representer)
-    yaml.SafeDumper.add_representer(set, set_representer)
-    yaml.SafeDumper.add_representer(frozenset, set_representer)
+    yaml.SafeDumper.add_representer(OrderedDict, _dict_representer)
+    yaml.SafeDumper.add_representer(set, _set_representer)
+    yaml.SafeDumper.add_representer(frozenset, _set_representer)
     yaml.SafeDumper.add_representer(
-        boolean.Expression, boolean_expression_representer)
-    yaml.SafeDumper.add_representer(Reaction, reaction_representer)
-    yaml.SafeDumper.add_representer(Formula, formula_representer)
-    yaml.SafeDumper.add_representer(Decimal, decimal_representer)
+        boolean.Expression, _boolean_expression_representer)
+    yaml.SafeDumper.add_representer(Reaction, _reaction_representer)
+    yaml.SafeDumper.add_representer(Formula, _formula_representer)
+    yaml.SafeDumper.add_representer(Decimal, _decimal_representer)
 
     yaml.SafeDumper.ignore_aliases = lambda *args: True
 
     yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-                         dict_constructor)
+                         _dict_constructor)
 
     yaml_args = {'default_flow_style': False,
                  'encoding': 'utf-8',
@@ -501,6 +493,7 @@ def write_yaml_model(model, dest='.', convert_medium=True,
 
 
 def main():
+    """Entry point for import program."""
     parser = argparse.ArgumentParser(
         description='Import from external model formats')
     parser.add_argument('--source', metavar='path', default='.',
