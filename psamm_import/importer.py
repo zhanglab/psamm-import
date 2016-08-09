@@ -51,23 +51,23 @@ logger = logging.getLogger(__name__)
 # Define custom dict representers for YAML
 # This allows reading/writing Python OrderedDicts in the correct order.
 # See: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts  # noqa
-def dict_representer(dumper, data):
+def _dict_representer(dumper, data):
     return dumper.represent_dict(iteritems(data))
 
 
-def dict_constructor(loader, node):
+def _dict_constructor(loader, node):
     return OrderedDict(loader.construct_pairs(node))
 
 
-def set_representer(dumper, data):
+def _set_representer(dumper, data):
     return dumper.represent_list(iter(data))
 
 
-def boolean_expression_representer(dumper, data):
+def _boolean_expression_representer(dumper, data):
     return dumper.represent_unicode(text_type(data))
 
 
-def reaction_representer(dumper, data):
+def _reaction_representer(dumper, data):
     """Generate a parsable reaction representation to the YAML parser.
 
     Check the number of compounds in the reaction, if it is larger than 10,
@@ -102,11 +102,11 @@ def reaction_representer(dumper, data):
         return dumper.represent_unicode(text_type(data))
 
 
-def formula_representer(dumper, data):
+def _formula_representer(dumper, data):
     return dumper.represent_unicode(text_type(data))
 
 
-def decimal_representer(dumper, data):
+def _decimal_representer(dumper, data):
     # Code from float_representer in PyYAML.
     if data % 1 == 0:
         return dumper.represent_int(int(data))
@@ -423,19 +423,19 @@ def write_yaml_model(model, dest='.', convert_medium=True,
     The parameter ``convert_medium`` indicates whether the exchange reactions
     should be converted automatically to a medium file.
     """
-    yaml.SafeDumper.add_representer(OrderedDict, dict_representer)
-    yaml.SafeDumper.add_representer(set, set_representer)
-    yaml.SafeDumper.add_representer(frozenset, set_representer)
+    yaml.SafeDumper.add_representer(OrderedDict, _dict_representer)
+    yaml.SafeDumper.add_representer(set, _set_representer)
+    yaml.SafeDumper.add_representer(frozenset, _set_representer)
     yaml.SafeDumper.add_representer(
-        boolean.Expression, boolean_expression_representer)
-    yaml.SafeDumper.add_representer(Reaction, reaction_representer)
-    yaml.SafeDumper.add_representer(Formula, formula_representer)
-    yaml.SafeDumper.add_representer(Decimal, decimal_representer)
+        boolean.Expression, _boolean_expression_representer)
+    yaml.SafeDumper.add_representer(Reaction, _reaction_representer)
+    yaml.SafeDumper.add_representer(Formula, _formula_representer)
+    yaml.SafeDumper.add_representer(Decimal, _decimal_representer)
 
     yaml.SafeDumper.ignore_aliases = lambda *args: True
 
     yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-                         dict_constructor)
+                         _dict_constructor)
 
     yaml_args = {'default_flow_style': False,
                  'encoding': 'utf-8',
