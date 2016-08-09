@@ -37,12 +37,13 @@ class BaseImporter(Importer):
     """Base importer for reading metabolic model from an SBML file."""
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in SBML format.\n'
               'Expected files in source directory:\n'
               '- *.sbml')
 
     def _resolve_source(self, source):
-        """Resolve source to filepath if it is a directory"""
+        """Resolve source to filepath if it is a directory."""
         if os.path.isdir(source):
             sources = glob.glob(os.path.join(source, '*.sbml'))
             if len(sources) == 0:
@@ -57,6 +58,7 @@ class BaseImporter(Importer):
         raise NotImplementedError('Subclasses must implement _get_reader()')
 
     def import_model(self, source):
+        """Import and return model instance."""
         source = self._resolve_source(source)
         with open(source, 'r') as f:
             self._reader = self._open_reader(f)
@@ -137,6 +139,7 @@ class NonstrictImporter(BaseImporter):
             raise ParseError(e)
 
     def import_model(self, source):
+        """Import and return model instance."""
         model = super(NonstrictImporter, self).import_model(source)
 
         objective_reactions = set()
@@ -307,7 +310,6 @@ class NonstrictImporter(BaseImporter):
                            compound_prefix=None, reaction_prefix=None,
                            compartment_prefix=None):
         """Convert SBML reaction entries to reactions."""
-
         for reaction in reactions:
             properties = reaction.properties
 

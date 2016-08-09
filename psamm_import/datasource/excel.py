@@ -35,17 +35,21 @@ from ..model import (Importer, ModelLoadError, CompoundEntry, ReactionEntry,
 
 
 class ImportiMA945(Importer):
+    """Importer for iMA945 model."""
+
     name = 'iMA945'
     title = 'Salmonella enterica iMA945 (Excel format), AbuOun et al., 2009'
 
     filename = 'jbc.M109.005868-5.xls'
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -148,6 +152,8 @@ class ImportiMA945(Importer):
 
 
 class ImportiRR1083(Importer):
+    """Importer for iRR1083 model."""
+
     name = 'iRR1083'
     title = ('Salmonella enterica iRR1083 (Excel format),'
              ' Raghunathan et al., 2009')
@@ -155,11 +161,13 @@ class ImportiRR1083(Importer):
     filename = '1752-0509-3-38-s1.xls'
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -229,6 +237,8 @@ class ImportiRR1083(Importer):
 
 
 class ImportiJO1366(Importer):
+    """Importer for iJO1366 model."""
+
     name = 'iJO1366'
     title = ('Escerichia coli iJO1366 (Excel format),'
              ' Orth et al., 2011')
@@ -236,11 +246,13 @@ class ImportiJO1366(Importer):
     filename = 'inline-supplementary-material-2.xls'
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -315,6 +327,8 @@ class ImportiJO1366(Importer):
 
 
 class EColiTextbookImport(Importer):
+    """Importer for E. coli core textbook model."""
+
     name = 'EColi_textbook'
     title = ('Escerichia coli Textbook (core) model (Excel format),'
              ' Orth et al., 2010')
@@ -322,11 +336,13 @@ class EColiTextbookImport(Importer):
     filename = 'ecoli_core_model.xls'
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -404,6 +420,8 @@ class EColiTextbookImport(Importer):
 
 
 class ImportSTMv1_0(Importer):  # noqa
+    """Importer for STM_v1.0 model."""
+
     name = 'STM_v1.0'
     title = ('Salmonella enterica STM_v1.0 (Excel format),'
              ' Thiele et al., 2011')
@@ -411,11 +429,13 @@ class ImportSTMv1_0(Importer):  # noqa
     filename = '1752-0509-5-8-s1.xlsx'
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -482,6 +502,8 @@ class ImportSTMv1_0(Importer):  # noqa
 
 
 class ImportiJN746(Importer):
+    """Importer for iJN746 model."""
+
     name = 'iJN746'
     title = ('Pseudomonas putida iJN746 (Excel format),'
              ' Nogales et al., 2011')
@@ -490,12 +512,14 @@ class ImportiJN746(Importer):
                  '1752-0509-2-79-s9.xls')
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:')
         for filename in self.filenames:
             print('- {}'.format(filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             compound_source = os.path.join(source, self.filenames[0])
             reaction_source = os.path.join(source, self.filenames[1])
@@ -575,6 +599,8 @@ class ImportiJN746(Importer):
 
 
 class ImportiJP815(Importer):
+    """Importer for iJP815 model."""
+
     name = 'iJP815'
     title = ('Pseudomonas putida iJP815 (Excel format),'
              ' Puchalka et al., 2008')
@@ -582,11 +608,13 @@ class ImportiJP815(Importer):
     filename = 'journal.pcbi.1000210.s011.XLS'
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -656,6 +684,8 @@ class ImportiJP815(Importer):
 
 
 class ImportiSyn731(Importer):
+    """Importer for iSyn731."""
+
     name = 'iSyn731'
     title = ('Synechocystis sp. PCC 6803 iSyn731 (Excel format),'
              ' Saha et al., 2012')
@@ -663,11 +693,13 @@ class ImportiSyn731(Importer):
     filename = 'journal.pone.0048285.s001.XLSX'
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -740,6 +772,8 @@ class ImportiSyn731(Importer):
 
 
 class ImportiCce806(Importer):
+    """Importer for iCce806 model."""
+
     name = 'iCce806'
     title = ('Cyanothece sp. ATCC 51142 iCce806 (Excel format),'
              ' Vu et al., 2012')
@@ -748,12 +782,14 @@ class ImportiCce806(Importer):
                  'journal.pcbi.1002460.s006.XLSX')
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:')
         for filename in self.filenames:
             print('- {}'.format(filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             reaction_source = os.path.join(source, self.filenames[0])
             compound_source = os.path.join(source, self.filenames[1])
@@ -870,6 +906,8 @@ class ImportiCce806(Importer):
 
 
 class ImportGSMN_TB(Importer):  # noqa
+    """Importer for GSMN-TB model."""
+
     name = 'GSMN-TB'
     title = ('Mycobacterium tuberculosis GSMN-TB (Excel format),'
              ' Beste et al., 2007')
@@ -878,12 +916,14 @@ class ImportGSMN_TB(Importer):  # noqa
                  'gb-2007-8-5-r89-s6.xls')
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:')
         for filename in self.filenames:
             print('- {}'.format(filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             reaction_source = os.path.join(source, self.filenames[0])
             compound_source = os.path.join(source, self.filenames[1])
@@ -980,6 +1020,8 @@ class ImportGSMN_TB(Importer):  # noqa
 
 
 class ImportiNJ661(Importer):
+    """Importer for iNJ661 model."""
+
     name = 'iNJ661'
     title = ('Mycobacterium tuberculosis iNJ661 (Excel format),'
              ' Jamshidi et al., 2007')
@@ -987,11 +1029,13 @@ class ImportiNJ661(Importer):
     filename = '1752-0509-1-26-s5.xls'
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model(self, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -1060,18 +1104,20 @@ class ImportiNJ661(Importer):
 
 
 class ImportGenericiNJ661mv(Importer):
-    """Importer for the model iNJ661m and iNJ661v
+    """Importer for the models iNJ661m and iNJ661v.
 
     For models of Mycobacterium tuberculosis iNJ661m/v (Excel format),
     Fang et al., 2010.
     """
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model_named(self, name, source):
+        """Import and return model instance with the given name."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -1130,27 +1176,33 @@ class ImportGenericiNJ661mv(Importer):
 
 
 class ImportiNJ661m(ImportGenericiNJ661mv):
+    """Importer for iNJ661m model."""
+
     name = 'inj661m'
     title = ('Mycobacterium tuberculosis iNJ661m (Excel format),'
              ' Fang et al., 2010')
     filename = '1752-0509-4-160-s3.xls'
 
     def import_model(self, source):
+        """Import and return model instance."""
         return self.import_model_named(self.title, source)
 
 
 class ImportiNJ661v(ImportGenericiNJ661mv):
+    """Importer for iNJ661v model."""
+
     name = 'inj661v'
     title = ('Mycobacterium tuberculosis iNJ661v (Excel format),'
              ' Fang et al., 2010')
     filename = '1752-0509-4-160-s5.xls'
 
     def import_model(self, source):
+        """Import and return model instance."""
         return self.import_model_named(self.title, source)
 
 
 class ImportShewanellaOng(Importer):
-    """Generic importer for four models published in Ong et al., 2014
+    """Generic importer for four models published in Ong et al., 2014.
 
     Generic importer for the models iMR1_799, iMR4_812, iW3181_789 and
     iOS217_672 from Ong et al. 2014. "Comparisons of Shewanella Strains Based
@@ -1168,11 +1220,13 @@ class ImportShewanellaOng(Importer):
     )
 
     def help(self):
+        """Print import help text."""
         print('Source must contain the model definition in Excel format.\n'
               'Expected files in source directory:\n'
               '- {}'.format(self.filename))
 
     def import_model_named(self, name, col_index, source):
+        """Import and return model instance."""
         if os.path.isdir(source):
             source = os.path.join(source, self.filename)
 
@@ -1282,49 +1336,62 @@ class ImportShewanellaOng(Importer):
 
 
 class ImportiMR1_799(ImportShewanellaOng):  # noqa
+    """Importer for iMR_799 model."""
+
     name = 'imr1_799'
     title = ('Shewanella oneidensis MR-1 iMR1_799 (Excel format),'
              ' Ong et al., 2014')
 
     def import_model(self, source):
+        """Import and return model instance."""
         return self.import_model_named(self.title, 0, source)
 
 
 class ImportiMR4_812(ImportShewanellaOng):  # noqa
+    """Importer for iMR4_812 model."""
+
     name = 'imr4_812'
     title = ('Shewanella sp. MR-4 iMR4_812 (Excel format),'
              ' Ong et al., 2014')
 
     def import_model(self, source):
+        """Import and return model instance."""
         return self.import_model_named(self.title, 1, source)
 
 
 class ImportiW3181_789(ImportShewanellaOng):  # noqa
+    """Importer for iW3181_789 model."""
+
     name = 'iw3181_789'
     title = ('Shewanella sp. W3-18-1 iW3181_789 (Excel format),'
              ' Ong et al., 2014')
 
     def import_model(self, source):
+        """Import and return model instance."""
         return self.import_model_named(self.title, 2, source)
 
 
 class ImportiOS217_672(ImportShewanellaOng):  # noqa
+    """Importer for iOS217_672 model."""
+
     name = 'ios217_672'
     title = ('Shewanella denitrificans OS217 iOS217_672 (Excel format),'
              ' Ong et al., 2014')
 
     def import_model(self, source):
+        """Import and return model instance."""
         return self.import_model_named(self.title, 3, source)
 
 
 class ImportModelSEED(Importer):
-    """Read metabolic model for a ModelSEED model"""
+    """Read metabolic model for a ModelSEED model."""
 
     name = 'ModelSEED'
     title = 'ModelSEED model (Excel format)'
     generic = True
 
     def help(self):
+        """Print importer help text."""
         print('Source must contain the model definition in Excel format\n'
               ' and a PTT file for mapping PEG gene names.'
               'Expected files in source directory:\n'
@@ -1332,6 +1399,7 @@ class ImportModelSEED(Importer):
               '- NC_*.ptt')
 
     def import_model(self, source):
+        """Import and return model instance."""
         if not os.path.isdir(source):
             raise ModelLoadError('Source must be a directory')
 

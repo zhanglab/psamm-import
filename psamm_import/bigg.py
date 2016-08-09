@@ -15,7 +15,7 @@
 #
 # Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
-"""BiGG to native model importer"""
+"""BiGG to native model importer."""
 
 import sys
 import argparse
@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    """Entry point for BiGG import program."""
     parser = argparse.ArgumentParser(
         description='Import from BiGG database')
     parser.add_argument('--dest', metavar='path', default='.',

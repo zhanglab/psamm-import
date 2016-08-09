@@ -42,20 +42,21 @@ def _float_parser(num_str):
 
 
 class Importer(BaseImporter):
-    """Read metabolic model from COBRApy JSON format"""
+    """Read metabolic model from COBRApy JSON format."""
 
     name = 'json'
     title = 'COBRApy JSON'
     generic = True
 
     def help(self):
+        """Print help text for importer."""
         print('Source must contain the model definition in COBRApy JSON'
               ' format.\n'
               'Expected files in source directory:\n'
               '- *.json')
 
     def _resolve_source(self, source):
-        """Resolve source to filepath if it is a directory"""
+        """Resolve source to filepath if it is a directory."""
         if os.path.isdir(source):
             sources = glob.glob(os.path.join(source, '*.json'))
             if len(sources) == 0:
@@ -137,6 +138,7 @@ class Importer(BaseImporter):
                                 subsystem=subsystem, genes=genes)
 
     def import_model(self, source):
+        """Import and return model instance."""
         if not hasattr(source, 'read'):  # Not a File-like object
             with open(self._resolve_source(source), 'r') as f:
                 return self._import(f)
