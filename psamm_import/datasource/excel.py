@@ -54,6 +54,7 @@ class ImportiMA945(Importer):
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'ST_biomass_core'
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -166,6 +167,7 @@ class ImportiRR1083(Importer):
 
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -247,6 +249,7 @@ class ImportiJO1366(Importer):
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'Ec_biomass_iJO1366_core_53p95M'
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -331,6 +334,7 @@ class EColiTextbookImport(Importer):
 
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -420,6 +424,7 @@ class ImportSTMv1_0(Importer):  # noqa
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'biomass_iRR1083_metals'
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -502,6 +507,7 @@ class ImportiJN746(Importer):
 
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -670,6 +676,7 @@ class ImportiSyn731(Importer):
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'Biomass_Hetero'
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -759,6 +766,7 @@ class ImportiCce806(Importer):
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'CyanoBM (average)'
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -991,6 +999,7 @@ class ImportiNJ661(Importer):
 
         model = MetabolicModel(
             self.title, self._read_compounds(), self._read_reactions())
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -1071,6 +1080,7 @@ class ImportGenericiNJ661mv(Importer):
         model = MetabolicModel(
             name, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = 'biomass_Mtb_9_60atp_test_NOF'
+        model.extracellular_compartment = 'e'
 
         return model
 
@@ -1172,6 +1182,7 @@ class ImportShewanellaOng(Importer):
         model = MetabolicModel(
             name, self._read_compounds(), self._read_reactions())
         model.biomass_reaction = self.biomass_names[col_index]
+        model.extracellular_compartment = 'e'
 
         return model
 
