@@ -69,26 +69,32 @@ class CompoundEntry(_BaseEntry):
 
     @property
     def name(self):
+        """Compound name."""
         return self._values.get('name', None)
 
     @property
     def formula(self):
+        """Compound formula."""
         return self._values.get('formula', None)
 
     @property
     def formula_neutral(self):
+        """Compound formula (neutral)."""
         return self._values.get('formula_neutral', None)
 
     @property
     def charge(self):
+        """Compound charge."""
         return self._values.get('charge', None)
 
     @property
     def kegg(self):
+        """KEGG identifier."""
         return self._values.get('kegg', None)
 
     @property
     def cas(self):
+        """CAS identifier."""
         return self._values.get('cas', None)
 
 
@@ -97,27 +103,35 @@ class ReactionEntry(_BaseEntry):
 
     @property
     def name(self):
+        """Reaction name."""
         return self._values.get('name', None)
 
     @property
     def genes(self):
+        """Gene list or boolean expression."""
         return self._values.get('genes', None)
 
     @property
     def equation(self):
+        """Reaction equation."""
         return self._values.get('equation', None)
 
     @property
     def subsystem(self):
+        """Reaction subsystem classification."""
         return self._values.get('subsystem', None)
 
     @property
     def ec(self):
+        """EC classifier."""
         return self._values.get('ec', None)
 
 
 class MetabolicModel(object):
+    """Intermediate model representation parsed from external source."""
+
     def __init__(self, name, compounds, reactions):
+        """Create model with name, compounds and reactions."""
         self._name = name
         self._compounds = dict((c.id, c) for c in compounds)
         self._reactions = dict((r.id, r) for r in reactions)
@@ -135,22 +149,27 @@ class MetabolicModel(object):
 
     @property
     def name(self):
+        """Model name."""
         return self._name
 
     @property
     def reactions(self):
+        """Model reactions as dictionary."""
         return self._reactions
 
     @property
     def compounds(self):
+        """Model compounds as dictionary."""
         return self._compounds
 
     @property
     def genes(self):
+        """Model genes as set."""
         return self._genes
 
     @property
     def biomass_reaction(self):
+        """Main biomass reaction of model."""
         return self._biomass_reaction
 
     @biomass_reaction.setter

@@ -21,6 +21,7 @@ import os
 import glob
 import json
 import logging
+import decimal
 
 from six import iteritems
 
@@ -32,21 +33,30 @@ from ..model import (Importer as BaseImporter, ModelLoadError,
 logger = logging.getLogger(__name__)
 
 
+def _float_parser(num_str):
+    num = float(num_str)
+    if num.is_integer():
+        return int(num)
+    else:
+        return decimal.Decimal(num_str)
+
+
 class Importer(BaseImporter):
-    """Read metabolic model from COBRApy JSON format"""
+    """Read metabolic model from COBRApy JSON format."""
 
     name = 'json'
     title = 'COBRApy JSON'
     generic = True
 
     def help(self):
+        """Print help text for importer."""
         print('Source must contain the model definition in COBRApy JSON'
               ' format.\n'
               'Expected files in source directory:\n'
               '- *.json')
 
     def _resolve_source(self, source):
-        """Resolve source to filepath if it is a directory"""
+        """Resolve source to filepath if it is a directory."""
         if os.path.isdir(source):
             sources = glob.glob(os.path.join(source, '*.json'))
             if len(sources) == 0:
@@ -58,7 +68,7 @@ class Importer(BaseImporter):
         return source
 
     def _import(self, file):
-        model_doc = json.load(file)
+        model_doc = json.load(file, parse_float=_float_parser)
         model = MetabolicModel(
             model_doc.get('id', 'COBRA JSON model'),
             self._read_compounds(model_doc), self._read_reactions(model_doc))
@@ -97,16 +107,24 @@ class Importer(BaseImporter):
             yield CompoundEntry(id=id, name=name, charge=charge,
                                 formula=formula)
 
-    def _parse_reaction_equation(self, doc):
+    def _parse_reaction_equation(self, r):
         compounds = ((Compound(metabolite), value)
-                     for metabolite, value in iteritems(doc))
-        return Reaction(Direction.Both, compounds)
+                     for metabolite, value in iteritems(r['metabolites']))
+        if (r.get('lower_bound') == 0 and
+                r.get('upper_bound') != 0):
+            direction = Direction.Forward
+        elif (r.get('lower_bound') != 0 and
+              r.get('upper_bound') == 0):
+            direction = Direction.Reverse
+        else:
+            direction = Direction.Both
+        return Reaction(direction, compounds)
 
     def _read_reactions(self, doc):
         for reaction in doc['reactions']:
             id = reaction['id']
             name = reaction.get('name', None)
-            equation = self._parse_reaction_equation(reaction['metabolites'])
+            equation = self._parse_reaction_equation(reaction)
             lower_flux = reaction.get('lower_bound')
             upper_flux = reaction.get('upper_bound')
             subsystem = reaction.get('subsystem')
@@ -120,6 +138,7 @@ class Importer(BaseImporter):
                                 subsystem=subsystem, genes=genes)
 
     def import_model(self, source):
+        """Import and return model instance."""
         if not hasattr(source, 'read'):  # Not a File-like object
             with open(self._resolve_source(source), 'r') as f:
                 return self._import(f)

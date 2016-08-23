@@ -20,7 +20,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='psamm-import',
-    version='0.11',
+    version='0.12',
     description='PSAMM model importers',
     maintainer='Jon Lund Steffensen',
     maintainer_email='jon_steffensen@uri.edu',
@@ -66,6 +66,6 @@ setup(
     install_requires=[
         'PyYAML>=3.11,<4.0',
         'xlrd',
-        'psamm>=0.20',
+        'psamm>=0.24',
         'six'
     ])
