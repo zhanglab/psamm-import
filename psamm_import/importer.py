@@ -123,6 +123,38 @@ def _decimal_representer(dumper, data):
     return dumper.represent_scalar('tag:yaml.org,2002:float', value)
 
 
+def get_default_compartment(model):
+    """Return what the default compartment should be set to.
+
+    If some compounds have no compartment, unique compartment
+    name is returned to avoid collisions.
+    """
+    default_compartment = 'c'
+    default_key = set()
+    for reaction_id, reaction in iteritems(model.reactions):
+        if 'equation' not in reaction.properties:
+            continue
+
+        equation = reaction.properties['equation']
+        for compound, _ in equation.compounds:
+            default_key.add(compound.compartment)
+
+    if None in default_key and default_compartment in default_key:
+        suffix = 1
+        while True:
+            new_key = '{}_{}'.format(default_compartment, suffix)
+            if new_key not in default_key:
+                default_compartment = new_key
+                break
+            suffix += 1
+
+    if None in default_key:
+        logger.warning(
+            'Compound(s) found without compartment, default'
+            ' compartment is {}.'.format(default_compartment))
+    return default_compartment
+
+
 def detect_extracellular(model):
     """Detect the identifier for equations with extracellular compartments."""
     extracellular_key = Counter()
@@ -451,6 +483,7 @@ def write_yaml_model(model, dest='.', convert_medium=True,
 
     default_flux_limit = detect_best_flux_limit(model)
     model.extracellular_compartment = detect_extracellular(model)
+    model.default_compartment = get_default_compartment(model)
     if default_flux_limit is not None:
         logger.info('Using default flux limit of {}'.format(
             default_flux_limit))
@@ -481,6 +514,8 @@ def write_yaml_model(model, dest='.', convert_medium=True,
         model_d['default_flux_limit'] = default_flux_limit
     if model.extracellular_compartment != 'e':
         model_d['extracellular'] = model.extracellular_compartment
+    if model.default_compartment != 'c':
+        model_d['default'] = model.default_compartment
     model_d['compounds'] = [{'include': 'compounds.yaml'}]
     model_d['reactions'] = []
     for reaction_file in reaction_files:
