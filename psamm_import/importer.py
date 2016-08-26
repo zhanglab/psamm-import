@@ -274,7 +274,7 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
                     common_reactions.append(reaction)
             else:
                 reactions_dump = list(
-                    model_reactions(common_reactions, model,
+                    model_reactions(reactions, model,
                                     exchange=exchange))
                 if len(reactions_dump) > 0:
                     mkdir_p(os.path.join(dest, subsystem_folder))
