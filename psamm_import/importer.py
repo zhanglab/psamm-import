@@ -543,6 +543,8 @@ def main():
                         help='Disable importing exchange reactions as medium')
     parser.add_argument('--split-subsystem', action='store_true',
                         help='Enable splitting reaction files by subsystem')
+    parser.add_argument('--force', action='store_true',
+                        help='Enable overwriting model files')
     parser.add_argument('format', help='Format to import ("list" to see all)')
 
     args = parser.parse_args()
@@ -555,6 +557,16 @@ def main():
     else:
         logging.basicConfig(
             level=logging.INFO, format=u'%(levelname)s: %(message)s')
+
+    if len(os.listdir(args.dest)) != 0:
+        if not args.force:
+            logger.error('Destination directory is not empty. Use --force'
+                         ' option to proceed anyway, overwriting any existing'
+                         ' files in {}'.format(args.dest))
+            return 1
+        else:
+            logger.warning('Destination directory is not empty, overwriting'
+                           ' existing files in {}'.format(args.dest))
 
     # Discover all available model importers
     importers = {}
