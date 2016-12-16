@@ -63,14 +63,14 @@ class BaseImporter(Importer):
         with open(source, 'r') as f:
             self._reader = self._open_reader(f)
 
-        model_name = 'SBML'
-        if self._reader.name is not None:
-            model_name = self._reader.name
-        elif self._reader.id is not None:
-            model_name = self._reader.id
+        model = MetabolicModel(self._reader.species, self._reader.reactions)
 
-        model = MetabolicModel(
-            model_name, self._reader.species, self._reader.reactions)
+        if self._reader.name is not None:
+            model.name = self._reader.name
+        elif self._reader.id is not None:
+            model.name = self._reader.id
+        else:
+            model.name = 'SBML'
 
         objective = self._reader.get_active_objective()
         if objective is not None:
@@ -143,10 +143,9 @@ class NonstrictImporter(BaseImporter):
         model = super(NonstrictImporter, self).import_model(source)
 
         objective_reactions = set()
-        flux_limits = {}
         biomass_reaction = model.biomass_reaction
         for reaction in self._reader.reactions:
-            # Check whether species multiple times
+            # Check whether species occur multiple times
             compounds = set()
             for c, _ in reaction.equation.compounds:
                 if c.name in compounds:
@@ -189,7 +188,15 @@ class NonstrictImporter(BaseImporter):
                 logger.warning('Lower bound of irreversible reaction {} is'
                                ' {}'.format(reaction.id, lower_bound))
 
-            flux_limits[reaction.id] = (lower_bound, upper_bound)
+            if reaction.id not in model.limits:
+                model.limits[reaction.id] = lower_bound, upper_bound
+            else:
+                current_lower, current_upper = model.limits[reaction.id]
+                if current_lower is None:
+                    current_lower = lower_bound
+                if current_upper is None:
+                    current_upper = upper_bound
+                model.limits[reaction.id] = current_lower, current_upper
 
         if len(objective_reactions) == 1:
             biomass_reaction = next(iter(objective_reactions))
@@ -225,20 +232,28 @@ class NonstrictImporter(BaseImporter):
             logger.info('Removing compartment prefix {!r}'.format(
                 compartment_prefix))
 
-        model = MetabolicModel(
-            model.name,
-            self._convert_compounds(itervalues(model.compounds),
-                                    compound_prefix=compound_prefix,
-                                    compartment_prefix=compartment_prefix),
-            self._convert_reactions(itervalues(model.reactions), flux_limits,
-                                    reaction_prefix=reaction_prefix,
-                                    compound_prefix=compound_prefix,
-                                    compartment_prefix=compartment_prefix))
+        compound_id_map = self._convert_compounds(
+            model, compound_prefix=compound_prefix,
+            compartment_prefix=compartment_prefix)
+        reaction_id_map = self._convert_reactions(
+            model, compound_id_map,
+            reaction_prefix=reaction_prefix,
+            compartment_prefix=compartment_prefix)
 
-        if reaction_prefix is not None and biomass_reaction is not None:
-            if biomass_reaction.startswith(reaction_prefix):
-                biomass_reaction = biomass_reaction[len(reaction_prefix):]
-        model.biomass_reaction = biomass_reaction
+        # Remove prefix from biomass reaction
+        if reaction_prefix is not None and model.biomass_reaction is not None:
+            model.biomass_reaction = reaction_id_map.get(
+                model.biomass_reaction, model.biomass_reaction)
+
+        # Remove prefix from limits
+        if reaction_prefix is not None:
+            limits_to_check = set(model.limits)
+            for reaction in limits_to_check:
+                if reaction in reaction_id_map:
+                    value = model.limits[reaction]
+                    del model.limits[reaction]
+                    new_reaction_id = reaction_id_map.get(reaction, reaction)
+                    model.limits[new_reaction_id] = value
 
         return model
 
@@ -261,11 +276,14 @@ class NonstrictImporter(BaseImporter):
             s = s.replace(escape, symbol)
         return s
 
-    def _convert_compounds(self, compounds, compound_prefix=None,
+    def _convert_compounds(self, model, compound_prefix=None,
                            compartment_prefix=None):
         """Convert SBML species entries to compounds."""
-        for compound in compounds:
+        new_compounds = []
+        id_map = {}
+        for compound in itervalues(model.compounds):
             properties = compound.properties
+            old_id = compound.id
 
             if compound_prefix is not None:
                 if properties['id'].startswith(compound_prefix):
@@ -304,14 +322,23 @@ class NonstrictImporter(BaseImporter):
                     else:
                         properties['charge'] = value
 
-            yield CompoundEntry(**properties)
+            if old_id != properties['id']:
+                id_map[old_id] = properties['id']
+            new_compounds.append(CompoundEntry(**properties))
 
-    def _convert_reactions(self, reactions, flux_limits,
-                           compound_prefix=None, reaction_prefix=None,
-                           compartment_prefix=None):
+        model.compounds.clear()
+        model.compounds.update((c.id, c) for c in new_compounds)
+
+        return id_map
+
+    def _convert_reactions(self, model, compound_id_map,
+                           reaction_prefix=None, compartment_prefix=None):
         """Convert SBML reaction entries to reactions."""
-        for reaction in reactions:
+        new_reactions = []
+        id_map = {}
+        for reaction in itervalues(model.reactions):
             properties = reaction.properties
+            old_id = reaction.id
 
             if reaction_prefix is not None:
                 if properties['id'].startswith(reaction_prefix):
@@ -351,23 +378,10 @@ class NonstrictImporter(BaseImporter):
 
                     properties['confidence'] = value
 
-            # Extract flux limits provided in parameters
-            if reaction.id in flux_limits:
-                lower, upper = flux_limits[reaction.id]
-                if properties.get('lower_flux') is None and lower is not None:
-                    properties['lower_flux'] = lower
-                if properties.get('upper_flux') is None and upper is not None:
-                    properties['upper_flux'] = upper
-
             # Convert compound IDs in reaction equation
             compounds = []
             for compound, value in properties['equation'].compounds:
-                name = compound.name
-                if (compound_prefix is not None and
-                        name.startswith(compound_prefix)):
-                    name = name[len(compound_prefix):]
-
-                name = self._convert_cobra_id(name)
+                name = compound_id_map.get(compound.name, compound.name)
 
                 compartment = compound.compartment
                 if (compartment_prefix is not None and
@@ -381,4 +395,11 @@ class NonstrictImporter(BaseImporter):
                 direction = properties['equation'].direction
                 properties['equation'] = Reaction(direction, compounds)
 
-            yield ReactionEntry(**properties)
+            if old_id != properties['id']:
+                id_map[old_id] = properties['id']
+            new_reactions.append(ReactionEntry(**properties))
+
+        model.reactions.clear()
+        model.reactions.update((r.id, r) for r in new_reactions)
+
+        return id_map

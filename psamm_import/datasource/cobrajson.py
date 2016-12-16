@@ -70,8 +70,8 @@ class Importer(BaseImporter):
     def _import(self, file):
         model_doc = json.load(file, parse_float=_float_parser)
         model = MetabolicModel(
-            model_doc.get('id', 'COBRA JSON model'),
             self._read_compounds(model_doc), self._read_reactions(model_doc))
+        model.name = model_doc.get('id', 'COBRA JSON model')
 
         biomass_reaction = None
         objective_reactions = set()

@@ -37,7 +37,9 @@ from psamm.expression import boolean
 from psamm.formula import Formula
 
 from .util import mkdir_p
-from .model import ParseError, ModelLoadError
+from .model import (ParseError, ModelLoadError,
+                    detect_extracellular_compartment,
+                    convert_exchange_to_medium)
 
 # Threshold for putting reactions into subsystem files
 _MAX_REACTION_COUNT = 3
@@ -151,29 +153,8 @@ def get_default_compartment(model):
     if None in default_key:
         logger.warning(
             'Compound(s) found without compartment, default'
-            ' compartment is {}.'.format(default_compartment))
+            ' compartment is set to {}.'.format(default_compartment))
     return default_compartment
-
-
-def detect_extracellular(model):
-    """Detect the identifier for equations with extracellular compartments."""
-    extracellular_key = Counter()
-
-    for reaction_id, reaction in iteritems(model.reactions):
-        if 'equation' not in reaction.properties:
-            continue
-
-        equation = reaction.properties['equation']
-        if len(equation.compounds) == 1:
-            compound, _ = equation.compounds[0]
-            compartment = compound.compartment
-            extracellular_key[compartment] += 1
-    if len(extracellular_key) == 0:
-        return None
-    else:
-        best_key, _ = extracellular_key.most_common(1)[0]
-    logger.info('{} is extracellular compartment'.format(best_key))
-    return best_key
 
 
 def detect_best_flux_limit(model):
@@ -186,16 +167,18 @@ def detect_best_flux_limit(model):
     flux_limit_count = Counter()
 
     for reaction_id, reaction in iteritems(model.reactions):
-        if 'equation' not in reaction.properties:
+        if reaction_id not in model.limits:
             continue
 
         equation = reaction.properties['equation']
-        if 'upper_flux' in reaction.properties and equation.direction.forward:
-            upper_flux = reaction.properties['upper_flux']
-            flux_limit_count[upper_flux] += 1
-        if 'lower_flux' in reaction.properties and equation.direction.reverse:
-            lower_flux = reaction.properties['lower_flux']
-            flux_limit_count[-lower_flux] += 1
+        if equation is None:
+            continue
+
+        lower, upper = model.limits[reaction_id]
+        if upper is not None and upper > 0 and equation.direction.forward:
+            flux_limit_count[upper] += 1
+        if lower is not None and -lower > 0 and equation.direction.reverse:
+            flux_limit_count[-lower] += 1
 
     if len(flux_limit_count) == 0:
         return None
@@ -223,7 +206,7 @@ def model_compounds(model):
         yield d
 
 
-def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
+def reactions_to_files(model, dest, yaml_args, split_subsystem):
     """Turn the reaction subsystems into their own files.
 
     If a subsystem has a number of reactions over the threshold, it gets its
@@ -235,7 +218,6 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
         model: :class:`psamm_import.model.MetabolicModel`.
         dest: output path for model files.
         yaml_args: YAML style format arguments
-        exchange: flag for whether to include exchange reactions
     """
     def safe_file_name(origin_name):
         safe_name = re.sub(
@@ -250,8 +232,7 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
     if not split_subsystem:
         common_reactions = [
             reaction for _, reaction in sorted(iteritems(model.reactions))]
-        reactions_dump = list(
-            model_reactions(common_reactions, model, exchange=exchange))
+        reactions_dump = list(model_reactions(common_reactions, model))
         if len(reactions_dump) > 0:
             reaction_file = 'reactions.yaml'
             with open(os.path.join(dest, reaction_file), 'w') as f:
@@ -273,9 +254,7 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
                 for reaction in reactions:
                     common_reactions.append(reaction)
             else:
-                reactions_dump = list(
-                    model_reactions(reactions, model,
-                                    exchange=exchange))
+                reactions_dump = list(model_reactions(reactions, model))
                 if len(reactions_dump) > 0:
                     mkdir_p(os.path.join(dest, subsystem_folder))
                     subsystem_file = os.path.join(
@@ -287,8 +266,7 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
                     sub_existance = True
 
         reaction_files.sort()
-        reactions_dump = list(
-            model_reactions(common_reactions, model, exchange=exchange))
+        reactions_dump = list(model_reactions(common_reactions, model))
         if sub_existance:
             reaction_file = os.path.join(
                 subsystem_folder, 'other_reactions.yaml')
@@ -302,7 +280,7 @@ def reactions_to_files(model, dest, yaml_args, exchange, split_subsystem):
     return reaction_files
 
 
-def model_reactions(reactions, model, exchange=False):
+def model_reactions(reactions, model):
     """Yield list of reactions as YAML dicts."""
     for reaction in reactions:
         d = OrderedDict()
@@ -316,13 +294,6 @@ def model_reactions(reactions, model, exchange=False):
                     reaction.id))
             continue
 
-        # Check whether reaction is exchange
-        if not exchange and equation is not None:
-            compound, _ = equation.compounds[0]
-            if (len(equation.compounds) == 1 and
-                    compound.compartment == model.extracellular_compartment):
-                continue
-
         order = {
             key: i for i, key in enumerate(
                 ['name', 'genes', 'equation', 'subsystem', 'ec'])}
@@ -335,108 +306,61 @@ def model_reactions(reactions, model, exchange=False):
         yield d
 
 
-def model_medium(model, default_flux_limit):
+def model_medium(model):
     """Return medium definition as YAML dict."""
-    # Generate list of compounds in medium
+    # Determine the default flux limits. If the value is already at the
+    # default it does not need to be included in the output.
+    lower_default, upper_default = None, None
+    if model.default_flux_limit is not None:
+        lower_default = -model.default_flux_limit
+        upper_default = model.default_flux_limit
+
     compounds = []
-    for reaction_id, reaction in sorted(iteritems(model.reactions)):
-        equation = reaction.properties.get('equation')
-        if equation is None:
-            continue
-
-        if len(equation.compounds) != 1:
-            # Provide warning for exchange reactions with more than
-            # one compound, they won't be put into the medium definition
-            if (len(equation.left) == 0) != (len(equation.right) == 0):
-                logger.warning('Exchange reaction {} has more than one'
-                               ' compound, it was not converted to'
-                               ' medium compounds'.format(reaction.id))
-            continue
-
-        compound, value = equation.compounds[0]
-        if (compound.compartment != model.extracellular_compartment and
-                len(equation.compounds) == 1):
-            continue
-
-        # Determine the default flux limits. If the value is already at the
-        # default it does not need to be included in the output.
-        lower_default, upper_default = None, None
-        if default_flux_limit is not None:
-            lower_default = -default_flux_limit
-            upper_default = default_flux_limit
-
-        # We multiply the flux bounds by value in order to create equivalent
-        # exchange reactions with stoichiometric value of one. If the flux
-        # bounds are not set but the reaction is unidirectional, the implicit
-        # flux bounds must be used.
-        lower_flux, upper_flux = None, None
-        if 'lower_flux' in reaction.properties:
-            lower_flux = reaction.properties['lower_flux'] * abs(value)
-        elif equation.direction == Direction.Forward:
-            lower_flux = 0.0
-
-        if 'upper_flux' in reaction.properties:
-            upper_flux = reaction.properties['upper_flux'] * abs(value)
-        elif equation.direction == Direction.Reverse:
-            upper_flux = 0.0
-
-        # If the stoichiometric value of the reaction is reversed, the flux
-        # limits must be flipped.
-        if value > 0:
-            lower_flux, upper_flux = (
-                -upper_flux if upper_flux is not None else None,
-                -lower_flux if lower_flux is not None else None)
-
-        c = OrderedDict([('id', compound.name)])
-        c['reaction'] = reaction_id
+    for compound, (reaction_id, lower, upper) in iteritems(model.medium):
+        d = OrderedDict([('id', compound.name)])
+        if reaction_id is not None:
+            d['reaction'] = reaction_id
 
         # Assign flux limits if different than the defaults. Also, add 0 so
         # that -0.0 is converted to plain 0.0 which looks better in the output.
-        if lower_flux is not None and lower_flux != lower_default:
-            c['lower'] = lower_flux + 0
-        if upper_flux is not None and upper_flux != upper_default:
-            c['upper'] = upper_flux + 0
+        if lower is not None and lower != lower_default:
+            d['lower'] = lower + 0
+        if upper is not None and upper != upper_default:
+            d['upper'] = upper + 0
 
-        compounds.append(c)
+        compounds.append(d)
 
-    medium = OrderedDict([('name', 'Default medium')])
-    medium['compounds'] = compounds
-
-    return medium
+    return OrderedDict([('compounds', compounds)])
 
 
-def model_reaction_limits(model, exchange=False, default_flux_limit=None):
+def model_reaction_limits(model):
     """Yield model reaction limits as YAML dicts."""
     for reaction_id, reaction in sorted(iteritems(model.reactions)):
-        # Check whether reaction is exchange
         equation = reaction.properties.get('equation')
         if equation is None:
-            continue
-
-        if not exchange and len(equation.compounds) == 1:
             continue
 
         # Determine the default flux limits. If the value is already at the
         # default it does not need to be included in the output.
         lower_default, upper_default = None, None
-        if default_flux_limit is not None:
+        if model.default_flux_limit is not None:
             if equation.direction.reverse:
-                lower_default = -default_flux_limit
+                lower_default = -model.default_flux_limit
             else:
                 lower_default = 0.0
 
             if equation.direction.forward:
-                upper_default = default_flux_limit
+                upper_default = model.default_flux_limit
             else:
                 upper_default = 0.0
 
         lower_flux, upper_flux = None, None
-        if ('lower_flux' in reaction.properties and
-                reaction.properties['lower_flux'] != lower_default):
-            lower_flux = reaction.properties['lower_flux']
-        if ('upper_flux' in reaction.properties and
-                reaction.properties['upper_flux'] != upper_default):
-            upper_flux = reaction.properties['upper_flux']
+        if reaction_id in model.limits:
+            lower, upper = model.limits[reaction_id]
+            if lower is not None and lower != lower_default:
+                lower_flux = lower
+            if upper is not None and upper != upper_default:
+                upper_flux = upper
 
         if lower_flux is not None or upper_flux is not None:
             d = OrderedDict([('reaction', reaction_id)])
@@ -481,27 +405,25 @@ def write_yaml_model(model, dest='.', convert_medium=True,
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
         yaml.safe_dump(list(model_compounds(model)), f, **yaml_args)
 
-    default_flux_limit = detect_best_flux_limit(model)
-    model.extracellular_compartment = detect_extracellular(model)
+    model.default_flux_limit = detect_best_flux_limit(model)
+    model.extracellular_compartment = detect_extracellular_compartment(model)
     model.default_compartment = get_default_compartment(model)
-    if default_flux_limit is not None:
+    if model.default_flux_limit is not None:
         logger.info('Using default flux limit of {}'.format(
-            default_flux_limit))
+            model.default_flux_limit))
 
     if convert_medium:
         logger.info('Converting exchange reactions to medium definition')
+        convert_exchange_to_medium(model)
 
-    exchange = not convert_medium
     reaction_files = reactions_to_files(
-        model, dest, yaml_args, exchange, split_subsystem)
+        model, dest, yaml_args, split_subsystem)
 
-    if convert_medium:
+    if len(model.medium) > 0:
         with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
-            yaml.safe_dump(model_medium(model, default_flux_limit), f,
-                           **yaml_args)
+            yaml.safe_dump(model_medium(model), f, **yaml_args)
 
-    reaction_limits = list(model_reaction_limits(
-        model, exchange, default_flux_limit))
+    reaction_limits = list(model_reaction_limits(model))
     if len(reaction_limits) > 0:
         with open(os.path.join(dest, 'limits.yaml'), 'w+') as f:
             yaml.safe_dump(reaction_limits, f, **yaml_args)
@@ -510,8 +432,8 @@ def write_yaml_model(model, dest='.', convert_medium=True,
 
     if model.biomass_reaction is not None:
         model_d['biomass'] = model.biomass_reaction
-    if default_flux_limit is not None:
-        model_d['default_flux_limit'] = default_flux_limit
+    if model.default_flux_limit is not None:
+        model_d['default_flux_limit'] = model.default_flux_limit
     if model.extracellular_compartment != 'e':
         model_d['extracellular'] = model.extracellular_compartment
     if model.default_compartment != 'c':
@@ -521,7 +443,7 @@ def write_yaml_model(model, dest='.', convert_medium=True,
     for reaction_file in reaction_files:
         model_d['reactions'].append({'include': reaction_file})
 
-    if convert_medium:
+    if len(model.medium) > 0:
         model_d['media'] = [{'include': 'medium.yaml'}]
 
     if len(reaction_limits) > 0:

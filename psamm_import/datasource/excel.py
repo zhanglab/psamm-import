@@ -55,8 +55,8 @@ class ImportiMA945(Importer):
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.biomass_reaction = 'ST_biomass_core'
         model.extracellular_compartment = 'e'
 
@@ -173,8 +173,8 @@ class ImportiRR1083(Importer):
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.extracellular_compartment = 'e'
 
         return model
@@ -258,8 +258,8 @@ class ImportiJO1366(Importer):
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.biomass_reaction = 'Ec_biomass_iJO1366_core_53p95M'
         model.extracellular_compartment = 'e'
 
@@ -348,8 +348,8 @@ class EColiTextbookImport(Importer):
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.extracellular_compartment = 'e'
 
         return model
@@ -441,8 +441,8 @@ class ImportSTMv1_0(Importer):  # noqa
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.biomass_reaction = 'biomass_iRR1083_metals'
         model.extracellular_compartment = 'e'
 
@@ -529,8 +529,8 @@ class ImportiJN746(Importer):
         self._compound_book = xlrd.open_workbook(compound_source)
         self._reaction_book = xlrd.open_workbook(reaction_source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.extracellular_compartment = 'e'
 
         return model
@@ -620,8 +620,8 @@ class ImportiJP815(Importer):
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
 
         return model
 
@@ -705,8 +705,8 @@ class ImportiSyn731(Importer):
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.biomass_reaction = 'Biomass_Hetero'
         model.extracellular_compartment = 'e'
 
@@ -799,8 +799,8 @@ class ImportiCce806(Importer):
         self._compound_book = xlrd.open_workbook(compound_source)
         self._reaction_book = xlrd.open_workbook(reaction_source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.biomass_reaction = 'CyanoBM (average)'
         model.extracellular_compartment = 'e'
 
@@ -933,8 +933,8 @@ class ImportGSMN_TB(Importer):  # noqa
         self._compound_book = xlrd.open_workbook(compound_source)
         self._reaction_book = xlrd.open_workbook(reaction_source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
 
         return model
 
@@ -1041,8 +1041,8 @@ class ImportiNJ661(Importer):
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            self.title, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = self.title
         model.extracellular_compartment = 'e'
 
         return model
@@ -1123,8 +1123,8 @@ class ImportGenericiNJ661mv(Importer):
 
         self._book = xlrd.open_workbook(source)
 
-        model = MetabolicModel(
-            name, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = name
         model.biomass_reaction = 'biomass_Mtb_9_60atp_test_NOF'
         model.extracellular_compartment = 'e'
 
@@ -1233,8 +1233,8 @@ class ImportShewanellaOng(Importer):
         self._book = xlrd.open_workbook(source)
         self._col_index = col_index
 
-        model = MetabolicModel(
-            name, self._read_compounds(), self._read_reactions())
+        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model.name = name
         model.biomass_reaction = self.biomass_names[col_index]
         model.extracellular_compartment = 'e'
 
@@ -1450,8 +1450,8 @@ class ImportModelSEED(Importer):
             peg_mapping[peg_id] = location_mapping[start, stop, direction]
 
         model = MetabolicModel(
-            'ModelSEED model', self._read_compounds(),
-            self._read_reactions(peg_mapping))
+            self._read_compounds(), self._read_reactions(peg_mapping))
+        model.name = 'ModelSEED model'
 
         return model
 
