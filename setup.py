@@ -20,7 +20,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='psamm-import',
-    version='0.13',
+    version='0.14',
     description='PSAMM model importers',
     maintainer='Jon Lund Steffensen',
     maintainer_email='jon_steffensen@uri.edu',
