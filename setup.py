@@ -66,6 +66,6 @@ setup(
     install_requires=[
         'PyYAML>=3.11,<4.0',
         'xlrd',
-        'psamm>=0.25',
+        'psamm>=0.27',
         'six'
     ])
