@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2016  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
 """Generic native model importer."""
 
@@ -543,6 +543,8 @@ def main():
                         help='Disable importing exchange reactions as medium')
     parser.add_argument('--split-subsystem', action='store_true',
                         help='Enable splitting reaction files by subsystem')
+    parser.add_argument('--force', action='store_true',
+                        help='Enable overwriting model files')
     parser.add_argument('format', help='Format to import ("list" to see all)')
 
     args = parser.parse_args()
@@ -555,6 +557,24 @@ def main():
     else:
         logging.basicConfig(
             level=logging.INFO, format=u'%(levelname)s: %(message)s')
+
+    # Check if dest directory is empty. If we get an error assume that the
+    # directory does not exist.
+    dest_is_empty = False
+    try:
+        dest_is_empty = len(os.listdir(args.dest)) == 0
+    except OSError:
+        dest_is_empty = True
+
+    if not dest_is_empty:
+        if not args.force:
+            logger.error('Destination directory is not empty. Use --force'
+                         ' option to proceed anyway, overwriting any existing'
+                         ' files in {}'.format(args.dest))
+            return 1
+        else:
+            logger.warning('Destination directory is not empty, overwriting'
+                           ' existing files in {}'.format(args.dest))
 
     # Discover all available model importers
     importers = {}
