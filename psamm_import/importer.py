@@ -40,7 +40,7 @@ from psamm.formula import Formula
 from .util import mkdir_p
 from .model import (ParseError, ModelLoadError,
                     detect_extracellular_compartment,
-                    convert_exchange_to_medium,
+                    convert_exchange_to_compounds,
                     infer_compartment_entries,
                     infer_compartment_adjacency)
 
@@ -264,8 +264,8 @@ def reactions_to_files(model, dest, writer, split_subsystem):
     return reaction_files
 
 
-def model_medium(model):
-    """Return medium definition as YAML dict."""
+def model_exchange(model):
+    """Return exchange definition as YAML dict."""
     # Determine the default flux limits. If the value is already at the
     # default it does not need to be included in the output.
     lower_default, upper_default = None, None
@@ -275,7 +275,7 @@ def model_medium(model):
 
     compounds = []
     for compound, (reaction_id, lower, upper) in sorted(
-            iteritems(model.medium)):
+            iteritems(model.exchange)):
         d = OrderedDict([('id', compound.name)])
         if reaction_id is not None:
             d['reaction'] = reaction_id
@@ -335,12 +335,12 @@ def model_reaction_limits(model):
             yield d
 
 
-def write_yaml_model(model, dest='.', convert_medium=True,
+def write_yaml_model(model, dest='.', convert_exchange=True,
                      split_subsystem=True):
     """Write the given MetabolicModel to YAML files in dest folder.
 
-    The parameter ``convert_medium`` indicates whether the exchange reactions
-    should be converted automatically to a medium file.
+    The parameter ``convert_exchange`` indicates whether the exchange reactions
+    should be converted automatically to an exchange file.
     """
     yaml.SafeDumper.add_representer(OrderedDict, _dict_representer)
     yaml.SafeDumper.add_representer(set, _set_representer)
@@ -376,9 +376,9 @@ def write_yaml_model(model, dest='.', convert_medium=True,
         logger.info('Using default flux limit of {}'.format(
             model.default_flux_limit))
 
-    if convert_medium:
-        logger.info('Converting exchange reactions to medium definition')
-        convert_exchange_to_medium(model)
+    if convert_exchange:
+        logger.info('Converting exchange reactions to exchange file')
+        convert_exchange_to_compounds(model)
 
     if len(model.compartments) == 0:
         infer_compartment_entries(model)
@@ -390,9 +390,9 @@ def write_yaml_model(model, dest='.', convert_medium=True,
 
     reaction_files = reactions_to_files(model, dest, writer, split_subsystem)
 
-    if len(model.medium) > 0:
-        with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
-            yaml.safe_dump(model_medium(model), f, **yaml_args)
+    if len(model.exchange) > 0:
+        with open(os.path.join(dest, 'exchange.yaml'), 'w+') as f:
+            yaml.safe_dump(model_exchange(model), f, **yaml_args)
 
     reaction_limits = list(model_reaction_limits(model))
     if len(reaction_limits) > 0:
@@ -427,8 +427,8 @@ def write_yaml_model(model, dest='.', convert_medium=True,
     for reaction_file in reaction_files:
         model_d['reactions'].append({'include': reaction_file})
 
-    if len(model.medium) > 0:
-        model_d['media'] = [{'include': 'medium.yaml'}]
+    if len(model.exchange) > 0:
+        model_d['exchange'] = [{'include': 'exchange.yaml'}]
 
     if len(reaction_limits) > 0:
         model_d['limits'] = [{'include': 'limits.yaml'}]
@@ -445,8 +445,9 @@ def main():
                         help='Source directory or file')
     parser.add_argument('--dest', metavar='path', default='.',
                         help='Destination directory (default is ".")')
-    parser.add_argument('--no-medium', action='store_true',
-                        help='Disable importing exchange reactions as medium')
+    parser.add_argument('--no-exchange', action='store_true',
+                        help=('Disable importing exchange reactions as'
+                              ' exchange compound file.'))
     parser.add_argument('--split-subsystem', action='store_true',
                         help='Enable splitting reaction files by subsystem')
     parser.add_argument('--force', action='store_true',
@@ -544,5 +545,6 @@ def main():
     dest = args.dest
     mkdir_p(dest)
 
-    write_yaml_model(model, dest, convert_medium=not args.no_medium,
+    convert_exchange = not args.no_exchange
+    write_yaml_model(model, dest, convert_exchange=convert_exchange,
                      split_subsystem=args.split_subsystem)

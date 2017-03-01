@@ -67,7 +67,7 @@ class MetabolicModel(object):
 
             self._reactions[reaction.id] = reaction
 
-        self._medium = {}
+        self._exchange = {}
 
         self._compartments = {}
         self._compartment_adjacency = {}
@@ -123,9 +123,9 @@ class MetabolicModel(object):
         return self._limits
 
     @property
-    def medium(self):
-        """Medium definition."""
-        return self._medium
+    def exchange(self):
+        """Return exchange definition."""
+        return self._exchange
 
     @property
     def compartment_adjacency(self):
@@ -273,11 +273,11 @@ def detect_extracellular_compartment(model):
     return best_key
 
 
-def convert_exchange_to_medium(model):
-    """Convert exchange reactions in model to medium definition.
+def convert_exchange_to_compounds(model):
+    """Convert exchange reactions in model to exchange compounds.
 
-    Only exchange reactions in the extracellular compartment are converted to
-    medium. The extracelluar compartment must be defined for the model.
+    Only exchange reactions in the extracellular compartment are converted.
+    The extracelluar compartment must be defined for the model.
     """
     # Build set of exchange reactions
     exchanges = set()
@@ -288,26 +288,26 @@ def convert_exchange_to_medium(model):
 
         if len(equation.compounds) != 1:
             # Provide warning for exchange reactions with more than
-            # one compound, they won't be put into the medium definition
+            # one compound, they won't be put into the exchange definition
             if (len(equation.left) == 0) != (len(equation.right) == 0):
                 logger.warning('Exchange reaction {} has more than one'
                                ' compound, it was not converted to'
-                               ' medium compounds'.format(reaction.id))
+                               ' exchange compound'.format(reaction.id))
             continue
 
         exchanges.add(reaction_id)
 
-    # Convert exchange reactions into medium
+    # Convert exchange reactions into exchange compounds
     for reaction_id in exchanges:
         equation = model.reactions[reaction_id].properties['equation']
         compound, value = equation.compounds[0]
         if compound.compartment != model.extracellular_compartment:
             continue
 
-        if compound in model.medium:
+        if compound in model.exchange:
             logger.warning(
-                'Compound {} is already defined in the medium'.format(
-                    compound))
+                'Compound {} is already defined in the exchange'
+                ' definition'.format(compound))
             continue
 
         # We multiply the flux bounds by value in order to create equivalent
@@ -333,7 +333,7 @@ def convert_exchange_to_medium(model):
                 -upper_flux if upper_flux is not None else None,
                 -lower_flux if lower_flux is not None else None)
 
-        model.medium[compound] = reaction_id, lower_flux, upper_flux
+        model.exchange[compound] = reaction_id, lower_flux, upper_flux
 
         del model.reactions[reaction_id]
         model.limits.pop(reaction_id, None)
