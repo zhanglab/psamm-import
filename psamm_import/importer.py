@@ -30,8 +30,9 @@ from decimal import Decimal
 
 import yaml
 import pkg_resources
-from six import iteritems, text_type
+from six import iteritems, itervalues, text_type
 
+from psamm.datasource.native import ModelWriter
 from psamm.reaction import Reaction, Direction
 from psamm.expression import boolean
 from psamm.formula import Formula
@@ -187,26 +188,7 @@ def detect_best_flux_limit(model):
     return best_flux_limit
 
 
-def model_compounds(model):
-    """Yield model compounds as YAML dicts."""
-    for compound_id, compound in sorted(iteritems(model.compounds)):
-        d = OrderedDict()
-        d['id'] = compound_id
-
-        order = {
-            key: i for i, key in enumerate(
-                ['name', 'formula', 'formula_neutral', 'charge', 'kegg',
-                 'cas'])}
-        prop_keys = (
-            set(compound.properties) - {'boundary', 'compartment'})
-        for prop in sorted(prop_keys, key=lambda x: (order.get(x, 1000), x)):
-            if compound.properties[prop] is not None:
-                d[prop] = compound.properties[prop]
-
-        yield d
-
-
-def reactions_to_files(model, dest, yaml_args, split_subsystem):
+def reactions_to_files(model, dest, writer, split_subsystem):
     """Turn the reaction subsystems into their own files.
 
     If a subsystem has a number of reactions over the threshold, it gets its
@@ -217,7 +199,8 @@ def reactions_to_files(model, dest, yaml_args, split_subsystem):
     Args:
         model: :class:`psamm_import.model.MetabolicModel`.
         dest: output path for model files.
-        yaml_args: YAML style format arguments
+        writer: :class:`psamm.datasource.native.ModelWriter`.
+        split_subsystem: Divide reactions into multiple files by subsystem.
     """
     def safe_file_name(origin_name):
         safe_name = re.sub(
@@ -232,11 +215,10 @@ def reactions_to_files(model, dest, yaml_args, split_subsystem):
     if not split_subsystem:
         common_reactions = [
             reaction for _, reaction in sorted(iteritems(model.reactions))]
-        reactions_dump = list(model_reactions(common_reactions, model))
-        if len(reactions_dump) > 0:
+        if len(common_reactions) > 0:
             reaction_file = 'reactions.yaml'
             with open(os.path.join(dest, reaction_file), 'w') as f:
-                yaml.safe_dump(reactions_dump, f, **yaml_args)
+                writer.write_reactions(f, common_reactions)
             reaction_files.append(reaction_file)
     else:
         subsystems = {}
@@ -254,56 +236,28 @@ def reactions_to_files(model, dest, yaml_args, split_subsystem):
                 for reaction in reactions:
                     common_reactions.append(reaction)
             else:
-                reactions_dump = list(model_reactions(reactions, model))
-                if len(reactions_dump) > 0:
+                if len(reactions) > 0:
                     mkdir_p(os.path.join(dest, subsystem_folder))
                     subsystem_file = os.path.join(
                         subsystem_folder, '{}.yaml'.format(subsystem_file))
 
                     with open(os.path.join(dest, subsystem_file), 'w') as f:
-                        yaml.safe_dump(reactions_dump, f, **yaml_args)
+                        writer.write_reactions(f, reactions)
                     reaction_files.append(subsystem_file)
                     sub_existance = True
 
         reaction_files.sort()
-        reactions_dump = list(model_reactions(common_reactions, model))
         if sub_existance:
             reaction_file = os.path.join(
                 subsystem_folder, 'other_reactions.yaml')
         else:
             reaction_file = 'reactions.yaml'
-        if len(reactions_dump) > 0:
+        if len(common_reactions) > 0:
             with open(os.path.join(dest, reaction_file), 'w') as f:
-                yaml.safe_dump(reactions_dump, f, **yaml_args)
+                writer.write_reactions(f, common_reactions)
             reaction_files.append(reaction_file)
 
     return reaction_files
-
-
-def model_reactions(reactions, model):
-    """Yield list of reactions as YAML dicts."""
-    for reaction in reactions:
-        d = OrderedDict()
-        d['id'] = reaction.id
-
-        # Check reaction equation
-        equation = reaction.properties.get('equation')
-        if equation is not None and len(equation.compounds) == 0:
-            logger.warning(
-                'Reaction {} was removed since it has no compounds.'.format(
-                    reaction.id))
-            continue
-
-        order = {
-            key: i for i, key in enumerate(
-                ['name', 'genes', 'equation', 'subsystem', 'ec'])}
-        prop_keys = (set(reaction.properties) -
-                     {'lower_flux', 'upper_flux', 'reversible'})
-        for prop in sorted(prop_keys, key=lambda x: (order.get(x, 1000), x)):
-            if reaction.properties[prop] is not None:
-                d[prop] = reaction.properties[prop]
-
-        yield d
 
 
 def model_medium(model):
@@ -402,8 +356,12 @@ def write_yaml_model(model, dest='.', convert_medium=True,
                  'allow_unicode': True,
                  'width': 79}
 
+    # The ModelWriter from PSAMM is not yet able to write the full model but
+    # only reactions and compounds.
+    writer = ModelWriter()
+
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
-        yaml.safe_dump(list(model_compounds(model)), f, **yaml_args)
+        writer.write_compounds(f, sorted(itervalues(model.compounds)))
 
     model.default_flux_limit = detect_best_flux_limit(model)
     model.extracellular_compartment = detect_extracellular_compartment(model)
@@ -416,8 +374,7 @@ def write_yaml_model(model, dest='.', convert_medium=True,
         logger.info('Converting exchange reactions to medium definition')
         convert_exchange_to_medium(model)
 
-    reaction_files = reactions_to_files(
-        model, dest, yaml_args, split_subsystem)
+    reaction_files = reactions_to_files(model, dest, writer, split_subsystem)
 
     if len(model.medium) > 0:
         with open(os.path.join(dest, 'medium.yaml'), 'w+') as f:
