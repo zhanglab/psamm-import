@@ -224,8 +224,9 @@ def reactions_to_files(model, dest, writer, split_subsystem):
         subsystems = {}
         for reaction in sorted(
                 itervalues(model.reactions), key=lambda r: r.id):
-            if reaction.subsystem is not None:
-                subsystem_file = safe_file_name(reaction.subsystem)
+            if 'subsystem' in reaction.properties:
+                subsystem_file = safe_file_name(
+                    reaction.properties['subsystem'])
                 subsystems.setdefault(subsystem_file, []).append(reaction)
             else:
                 common_reactions.append(reaction)
