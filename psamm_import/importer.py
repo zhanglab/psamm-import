@@ -274,7 +274,8 @@ def model_medium(model):
         upper_default = model.default_flux_limit
 
     compounds = []
-    for compound, (reaction_id, lower, upper) in iteritems(model.medium):
+    for compound, (reaction_id, lower, upper) in sorted(
+            iteritems(model.medium)):
         d = OrderedDict([('id', compound.name)])
         if reaction_id is not None:
             d['reaction'] = reaction_id
