@@ -67,6 +67,9 @@ class MetabolicModel(object):
 
         self._medium = {}
 
+        self._compartments = {}
+        self._compartment_adjacency = {}
+
         self._name = None
         self._biomass_reaction = None
         self._extracellular_compartment = None
@@ -93,6 +96,11 @@ class MetabolicModel(object):
         self._name = value
 
     @property
+    def compartments(self):
+        """Model compartments as dictionary."""
+        return self._compartments
+
+    @property
     def reactions(self):
         """Model reactions as dictionary."""
         return self._reactions
@@ -116,6 +124,11 @@ class MetabolicModel(object):
     def medium(self):
         """Medium definition."""
         return self._medium
+
+    @property
+    def compartment_adjacency(self):
+        """Return compartment adjacency dictionary."""
+        return self._compartment_adjacency
 
     @property
     def biomass_reaction(self):
@@ -159,6 +172,7 @@ class MetabolicModel(object):
         """Print model summary."""
         print('Model: {}'.format(self.name))
         print('- Biomass reaction: {}'.format(self.biomass_reaction))
+        print('- Compartments: {}'.format(len(self.compartments)))
         print('- Compounds: {}'.format(len(self.compounds)))
         print('- Reactions: {}'.format(len(self.reactions)))
         print('- Genes: {}'.format(len(self.genes)))

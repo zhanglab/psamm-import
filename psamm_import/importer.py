@@ -397,6 +397,19 @@ def write_yaml_model(model, dest='.', convert_medium=True,
         model_d['extracellular'] = model.extracellular_compartment
     if model.default_compartment != 'c':
         model_d['default'] = model.default_compartment
+
+    if len(model.compartments) > 0:
+        compartment_list = []
+        for compartment in sorted(
+                itervalues(model.compartments), key=lambda c: c.id):
+            adjacent = model.compartment_adjacency.get(compartment.id)
+            if adjacent is not None and len(adjacent) == 1:
+                adjacent = next(iter(adjacent))
+            compartment_list.append(writer.convert_compartment_entry(
+                compartment, adjacent))
+
+        model_d['compartments'] = compartment_list
+
     model_d['compounds'] = [{'include': 'compounds.yaml'}]
     model_d['reactions'] = []
     for reaction_file in reaction_files:
