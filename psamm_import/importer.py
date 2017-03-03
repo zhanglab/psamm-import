@@ -213,8 +213,8 @@ def reactions_to_files(model, dest, writer, split_subsystem):
     common_reactions = []
     reaction_files = []
     if not split_subsystem:
-        common_reactions = [
-            reaction for _, reaction in sorted(iteritems(model.reactions))]
+        common_reactions = sorted(
+            itervalues(model.reactions), key=lambda r: r.id)
         if len(common_reactions) > 0:
             reaction_file = 'reactions.yaml'
             with open(os.path.join(dest, reaction_file), 'w') as f:
@@ -222,7 +222,8 @@ def reactions_to_files(model, dest, writer, split_subsystem):
             reaction_files.append(reaction_file)
     else:
         subsystems = {}
-        for _, reaction in sorted(iteritems(model.reactions)):
+        for reaction in sorted(
+                itervalues(model.reactions), key=lambda r: r.id):
             if reaction.subsystem is not None:
                 subsystem_file = safe_file_name(reaction.subsystem)
                 subsystems.setdefault(subsystem_file, []).append(reaction)
@@ -361,7 +362,8 @@ def write_yaml_model(model, dest='.', convert_medium=True,
     writer = ModelWriter()
 
     with open(os.path.join(dest, 'compounds.yaml'), 'w+') as f:
-        writer.write_compounds(f, sorted(itervalues(model.compounds)))
+        writer.write_compounds(f, sorted(
+            itervalues(model.compounds), key=lambda c: c.id))
 
     model.default_flux_limit = detect_best_flux_limit(model)
     model.extracellular_compartment = detect_extracellular_compartment(model)
