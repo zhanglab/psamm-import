@@ -40,7 +40,9 @@ from psamm.formula import Formula
 from .util import mkdir_p
 from .model import (ParseError, ModelLoadError,
                     detect_extracellular_compartment,
-                    convert_exchange_to_medium)
+                    convert_exchange_to_medium,
+                    infer_compartment_entries,
+                    infer_compartment_adjacency)
 
 # Threshold for putting reactions into subsystem files
 _MAX_REACTION_COUNT = 3
@@ -375,6 +377,14 @@ def write_yaml_model(model, dest='.', convert_medium=True,
     if convert_medium:
         logger.info('Converting exchange reactions to medium definition')
         convert_exchange_to_medium(model)
+
+    if len(model.compartments) == 0:
+        infer_compartment_entries(model)
+        logger.info('Inferred {} compartments: {}'.format(
+            len(model.compartments), ', '.join(model.compartments)))
+
+    if len(model.compartments) != 0 and len(model.compartment_adjacency) == 0:
+        infer_compartment_adjacency(model)
 
     reaction_files = reactions_to_files(model, dest, writer, split_subsystem)
 

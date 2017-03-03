@@ -23,12 +23,14 @@ result of parsing a model before it is converted to YAML format.
 
 import logging
 from collections import Counter
+from itertools import product
 
 from six import iteritems, itervalues, text_type
 
 from psamm.expression import boolean
 from psamm.datasource.reaction import (parse_reaction,
                                        ParseError as ReactionParseError)
+from psamm.datasource.entry import DictCompartmentEntry
 from psamm import formula
 from psamm.reaction import Direction
 
@@ -335,3 +337,52 @@ def convert_exchange_to_medium(model):
 
         del model.reactions[reaction_id]
         model.limits.pop(reaction_id, None)
+
+
+def infer_compartment_entries(model):
+    """Infer compartment entries for model based on reaction compounds."""
+    compartment_ids = set()
+    for reaction in itervalues(model.reactions):
+        equation = reaction.equation
+        if equation is None:
+            continue
+
+        for compound, _ in equation.compounds:
+            compartment = compound.compartment
+            if compartment is None:
+                compartment = model.default_compartment
+
+            if compartment is not None:
+                compartment_ids.add(compartment)
+
+    for compartment in compartment_ids:
+        if compartment in model.compartments:
+            continue
+
+        entry = DictCompartmentEntry(dict(id=compartment))
+        model.compartments[entry.id] = entry
+
+
+def infer_compartment_adjacency(model):
+    """Infer compartment adjacency for model based on reactions."""
+    def reaction_compartments(seq):
+        for compound, _ in seq:
+            compartment = compound.compartment
+            if compartment is None:
+                compartment = model.default_compartment
+
+            if compartment is not None:
+                yield compartment
+
+    for reaction in itervalues(model.reactions):
+        equation = reaction.equation
+        if equation is None:
+            continue
+
+        left = reaction_compartments(equation.left)
+        right = reaction_compartments(equation.right)
+        for c1, c2 in product(left, right):
+            if c1 == c2:
+                continue
+            model.compartment_adjacency.setdefault(c1, set()).add(c2)
+            model.compartment_adjacency.setdefault(c2, set()).add(c1)
