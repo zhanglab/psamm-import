@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2017  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
 """Common metabolic model representations for imported models.
 
@@ -22,6 +22,7 @@ result of parsing a model before it is converted to YAML format.
 """
 
 import logging
+from collections import Counter
 
 from six import iteritems, itervalues, text_type
 
@@ -29,6 +30,7 @@ from psamm.expression import boolean
 from psamm.datasource.reaction import (parse_reaction,
                                        ParseError as ReactionParseError)
 from psamm import formula
+from psamm.reaction import Direction
 
 logger = logging.getLogger(__name__)
 
@@ -45,97 +47,31 @@ class ParseError(ImportError):
     """Exception used to signal an error parsing the model files."""
 
 
-class _BaseEntry(object):
-    """Base entry in loaded model."""
-
-    def __init__(self, **kwargs):
-        self._values = {key: value for key, value in iteritems(kwargs)
-                        if value is not None}
-        if 'id' not in self._values:
-            raise ValueError('No id was provided')
-        self._id = self._values['id']
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def properties(self):
-        return dict(self._values)
-
-
-class CompoundEntry(_BaseEntry):
-    """Compound entry in loaded model."""
-
-    @property
-    def name(self):
-        """Compound name."""
-        return self._values.get('name', None)
-
-    @property
-    def formula(self):
-        """Compound formula."""
-        return self._values.get('formula', None)
-
-    @property
-    def formula_neutral(self):
-        """Compound formula (neutral)."""
-        return self._values.get('formula_neutral', None)
-
-    @property
-    def charge(self):
-        """Compound charge."""
-        return self._values.get('charge', None)
-
-    @property
-    def kegg(self):
-        """KEGG identifier."""
-        return self._values.get('kegg', None)
-
-    @property
-    def cas(self):
-        """CAS identifier."""
-        return self._values.get('cas', None)
-
-
-class ReactionEntry(_BaseEntry):
-    """Reaction entry in loaded model."""
-
-    @property
-    def name(self):
-        """Reaction name."""
-        return self._values.get('name', None)
-
-    @property
-    def genes(self):
-        """Gene list or boolean expression."""
-        return self._values.get('genes', None)
-
-    @property
-    def equation(self):
-        """Reaction equation."""
-        return self._values.get('equation', None)
-
-    @property
-    def subsystem(self):
-        """Reaction subsystem classification."""
-        return self._values.get('subsystem', None)
-
-    @property
-    def ec(self):
-        """EC classifier."""
-        return self._values.get('ec', None)
-
-
 class MetabolicModel(object):
     """Intermediate model representation parsed from external source."""
 
-    def __init__(self, name, compounds, reactions):
+    def __init__(self, compounds, reactions):
         """Create model with name, compounds and reactions."""
-        self._name = name
         self._compounds = dict((c.id, c) for c in compounds)
-        self._reactions = dict((r.id, r) for r in reactions)
+
+        self._reactions = {}
+        self._limits = {}
+        for reaction in reactions:
+            # Extract flux limits embedded in reaction properties
+            lower_flux = reaction.properties.pop('lower_flux', None)
+            upper_flux = reaction.properties.pop('upper_flux', None)
+            if lower_flux is not None or upper_flux is not None:
+                self._limits[reaction.id] = lower_flux, upper_flux
+
+            self._reactions[reaction.id] = reaction
+
+        self._medium = {}
+
+        self._name = None
         self._biomass_reaction = None
+        self._extracellular_compartment = None
+        self._default_compartment = None
+        self._default_flux_limit = None
 
         self._genes = set()
         for r in itervalues(self._reactions):
@@ -151,6 +87,10 @@ class MetabolicModel(object):
     def name(self):
         """Model name."""
         return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
 
     @property
     def reactions(self):
@@ -168,6 +108,16 @@ class MetabolicModel(object):
         return self._genes
 
     @property
+    def limits(self):
+        """Return limits on reaction fluxes."""
+        return self._limits
+
+    @property
+    def medium(self):
+        """Medium definition."""
+        return self._medium
+
+    @property
     def biomass_reaction(self):
         """Main biomass reaction of model."""
         return self._biomass_reaction
@@ -177,6 +127,33 @@ class MetabolicModel(object):
         if value is not None and value not in self._reactions:
             raise ValueError('Invalid reaction')
         self._biomass_reaction = value
+
+    @property
+    def extracellular_compartment(self):
+        """Extracellular compartment specified by the model."""
+        return self._extracellular_compartment
+
+    @extracellular_compartment.setter
+    def extracellular_compartment(self, value):
+        self._extracellular_compartment = value
+
+    @property
+    def default_compartment(self):
+        """Default compartment specified by the model."""
+        return self._default_compartment
+
+    @default_compartment.setter
+    def default_compartment(self, value):
+        self._default_compartment = value
+
+    @property
+    def default_flux_limit(self):
+        """Default flux limit specified by the model."""
+        return self._default_flux_limit
+
+    @default_flux_limit.setter
+    def default_flux_limit(self, value):
+        self._default_flux_limit = value
 
     def print_summary(self):
         """Print model summary."""
@@ -257,3 +234,90 @@ class Importer(object):
             logger.warning(msg)
 
         return s
+
+
+def detect_extracellular_compartment(model):
+    """Detect the identifier for equations with extracellular compartments."""
+    extracellular_key = Counter()
+
+    for reaction_id, reaction in iteritems(model.reactions):
+        equation = reaction.equation
+        if equation is None:
+            continue
+
+        if len(equation.compounds) == 1:
+            compound, _ = equation.compounds[0]
+            compartment = compound.compartment
+            extracellular_key[compartment] += 1
+    if len(extracellular_key) == 0:
+        return None
+    else:
+        best_key, _ = extracellular_key.most_common(1)[0]
+    logger.info('{} is extracellular compartment'.format(best_key))
+    return best_key
+
+
+def convert_exchange_to_medium(model):
+    """Convert exchange reactions in model to medium definition.
+
+    Only exchange reactions in the extracellular compartment are converted to
+    medium. The extracelluar compartment must be defined for the model.
+    """
+    # Build set of exchange reactions
+    exchanges = set()
+    for reaction_id, reaction in iteritems(model.reactions):
+        equation = reaction.properties.get('equation')
+        if equation is None:
+            continue
+
+        if len(equation.compounds) != 1:
+            # Provide warning for exchange reactions with more than
+            # one compound, they won't be put into the medium definition
+            if (len(equation.left) == 0) != (len(equation.right) == 0):
+                logger.warning('Exchange reaction {} has more than one'
+                               ' compound, it was not converted to'
+                               ' medium compounds'.format(reaction.id))
+            continue
+
+        exchanges.add(reaction_id)
+
+    # Convert exchange reactions into medium
+    for reaction_id in exchanges:
+        equation = model.reactions[reaction_id].properties['equation']
+        compound, value = equation.compounds[0]
+        if compound.compartment != model.extracellular_compartment:
+            continue
+
+        if compound in model.medium:
+            logger.warning(
+                'Compound {} is already defined in the medium'.format(
+                    compound))
+            continue
+
+        # We multiply the flux bounds by value in order to create equivalent
+        # exchange reactions with stoichiometric value of one. If the flux
+        # bounds are not set but the reaction is unidirectional, the implicit
+        # flux bounds must be used.
+        lower_flux, upper_flux = None, None
+        if reaction_id in model.limits:
+            lower, upper = model.limits[reaction_id]
+            if lower is not None:
+                lower_flux = lower * abs(value)
+            if upper is not None:
+                upper_flux = upper * abs(value)
+        elif equation.direction == Direction.Forward:
+            lower_flux = 0.0
+        elif equation.direction == Direction.Reverse:
+            upper_flux = 0.0
+
+        # If the stoichiometric value of the reaction is reversed, the flux
+        # limits must be flipped.
+        if value > 0:
+            lower_flux, upper_flux = (
+                -upper_flux if upper_flux is not None else None,
+                -lower_flux if lower_flux is not None else None)
+
+        model.medium[compound] = reaction_id, lower_flux, upper_flux
+
+        del model.reactions[reaction_id]
+        model.limits.pop(reaction_id, None)

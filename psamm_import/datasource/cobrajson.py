@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2017  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
 """Importer for the COBRApy JSON format."""
 
@@ -26,9 +26,10 @@ import decimal
 from six import iteritems
 
 from psamm.reaction import Reaction, Compound, Direction
+from psamm.datasource.entry import (DictCompoundEntry as CompoundEntry,
+                                    DictReactionEntry as ReactionEntry)
 
-from ..model import (Importer as BaseImporter, ModelLoadError,
-                     CompoundEntry, ReactionEntry, MetabolicModel)
+from ..model import Importer as BaseImporter, ModelLoadError, MetabolicModel
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +71,8 @@ class Importer(BaseImporter):
     def _import(self, file):
         model_doc = json.load(file, parse_float=_float_parser)
         model = MetabolicModel(
-            model_doc.get('id', 'COBRA JSON model'),
             self._read_compounds(model_doc), self._read_reactions(model_doc))
+        model.name = model_doc.get('id', 'COBRA JSON model')
 
         biomass_reaction = None
         objective_reactions = set()
@@ -104,8 +105,8 @@ class Importer(BaseImporter):
             else:
                 formula = None
 
-            yield CompoundEntry(id=id, name=name, charge=charge,
-                                formula=formula)
+            yield CompoundEntry(dict(
+                id=id, name=name, charge=charge, formula=formula))
 
     def _parse_reaction_equation(self, r):
         compounds = ((Compound(metabolite), value)
@@ -133,9 +134,10 @@ class Importer(BaseImporter):
             if genes is not None:
                 genes = self._try_parse_gene_association(id, genes)
 
-            yield ReactionEntry(id=id, name=name, equation=equation,
-                                lower_flux=lower_flux, upper_flux=upper_flux,
-                                subsystem=subsystem, genes=genes)
+            yield ReactionEntry(dict(
+                id=id, name=name, equation=equation,
+                lower_flux=lower_flux, upper_flux=upper_flux,
+                subsystem=subsystem, genes=genes))
 
     def import_model(self, source):
         """Import and return model instance."""
