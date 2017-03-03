@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2017  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
 """SBML importers."""
 
@@ -25,10 +25,12 @@ import logging
 from six import iteritems, itervalues
 
 from psamm.datasource import sbml
+from psamm.datasource.entry import (DictCompoundEntry as CompoundEntry,
+                                    DictReactionEntry as ReactionEntry)
+from psamm.datasource.context import FilePathContext
 from psamm.reaction import Compound, Reaction
 
-from ..model import (Importer, ParseError, ModelLoadError, CompoundEntry,
-                     ReactionEntry, MetabolicModel)
+from ..model import Importer, ParseError, ModelLoadError, MetabolicModel
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,8 @@ class BaseImporter(Importer):
     def import_model(self, source):
         """Import and return model instance."""
         source = self._resolve_source(source)
-        with open(source, 'r') as f:
+        self._context = FilePathContext(source)
+        with self._context.open() as f:
             self._reader = self._open_reader(f)
 
         model = MetabolicModel(self._reader.species, self._reader.reactions)
@@ -282,7 +285,7 @@ class NonstrictImporter(BaseImporter):
         new_compounds = []
         id_map = {}
         for compound in itervalues(model.compounds):
-            properties = compound.properties
+            properties = dict(compound.properties)
             old_id = compound.id
 
             if compound_prefix is not None:
@@ -324,7 +327,8 @@ class NonstrictImporter(BaseImporter):
 
             if old_id != properties['id']:
                 id_map[old_id] = properties['id']
-            new_compounds.append(CompoundEntry(**properties))
+            new_compounds.append(CompoundEntry(
+                properties, filemark=compound.filemark))
 
         model.compounds.clear()
         model.compounds.update((c.id, c) for c in new_compounds)
@@ -397,7 +401,8 @@ class NonstrictImporter(BaseImporter):
 
             if old_id != properties['id']:
                 id_map[old_id] = properties['id']
-            new_reactions.append(ReactionEntry(**properties))
+            new_reactions.append(ReactionEntry(
+                properties, filemark=reaction.filemark))
 
         model.reactions.clear()
         model.reactions.update((r.id, r) for r in new_reactions)

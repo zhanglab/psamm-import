@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015-2016  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2017  Jon Lund Steffensen <jon_steffensen@uri.edu>
 # Copyright 2015  Keith Dufault-Thompson <keitht547@my.uri.edu>
 
 """Importers for various Excel formats."""
@@ -27,11 +27,13 @@ import xlrd
 from six import string_types
 
 from psamm.datasource.reaction import ReactionParser
+from psamm.datasource.entry import (DictCompoundEntry as CompoundEntry,
+                                    DictReactionEntry as ReactionEntry)
+from psamm.datasource.context import FileMark, FilePathContext
 from psamm.reaction import Reaction, Compound, Direction
 from psamm.expression import boolean
 
-from ..model import (Importer, ModelLoadError, CompoundEntry, ReactionEntry,
-                     MetabolicModel)
+from ..model import Importer, ModelLoadError, MetabolicModel
 
 
 class ImportiMA945(Importer):
@@ -50,10 +52,12 @@ class ImportiMA945(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -100,10 +104,11 @@ class ImportiMA945(Importer):
 
             kegg = None if kegg == '' else kegg
 
-            yield CompoundEntry(id=compound_id, name=name,
-                                formula=formula,
-                                formula_neutral=formula_neutral,
-                                charge=charge, kegg=kegg)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, formula=formula,
+                formula_neutral=formula_neutral,
+                charge=charge, kegg=kegg), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -147,8 +152,10 @@ class ImportiMA945(Importer):
 
             genes = self._try_parse_gene_association(reaction_id, genes)
 
-            yield ReactionEntry(id=reaction_id, name=name,
-                                genes=genes, equation=equation)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name,
+                genes=genes, equation=equation), filemark=filemark)
 
 
 class ImportiRR1083(Importer):
@@ -168,10 +175,12 @@ class ImportiRR1083(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -200,10 +209,12 @@ class ImportiRR1083(Importer):
 
             kegg = None if kegg == '' else kegg
 
-            yield CompoundEntry(id=compound_id, name=name,
-                                formula=formula_neutral,
-                                formula_neutral=formula_neutral,
-                                charge=charge, kegg=kegg)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name,
+                formula=formula_neutral,
+                formula_neutral=formula_neutral,
+                charge=charge, kegg=kegg), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -232,8 +243,10 @@ class ImportiRR1083(Importer):
 
             subsystem = None if subsystem == '' else subsystem
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation), filemark=filemark)
 
 
 class ImportiJO1366(Importer):
@@ -253,10 +266,12 @@ class ImportiJO1366(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -289,10 +304,12 @@ class ImportiJO1366(Importer):
             kegg = None if kegg.strip() == '' else kegg
             cas = None if cas.strip() == '' else cas
 
-            yield CompoundEntry(id=compound_id, name=name,
-                                formula=formula,
-                                formula_neutral=formula_neutral,
-                                charge=charge, kegg=kegg, cas=cas)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name,
+                formula=formula,
+                formula_neutral=formula_neutral,
+                charge=charge, kegg=kegg, cas=cas), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -321,9 +338,11 @@ class ImportiJO1366(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem,
-                                ec=ec)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, subsystem=subsystem,
+                ec=ec), filemark=filemark)
 
 
 class EColiTextbookImport(Importer):
@@ -343,10 +362,12 @@ class EColiTextbookImport(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -383,10 +404,12 @@ class EColiTextbookImport(Importer):
             cas = None if cas.strip() == '' or cas == 'None' else cas
             kegg = None if kegg.strip() == '' else kegg
 
-            yield CompoundEntry(id=compound_id, name=name,
-                                formula=formula,
-                                formula_neutral=formula_neutral,
-                                charge=charge, kegg=kegg, cas=cas)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name,
+                formula=formula,
+                formula_neutral=formula_neutral,
+                charge=charge, kegg=kegg, cas=cas), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -415,8 +438,10 @@ class EColiTextbookImport(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem, ec=ec)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes, equation=equation,
+                subsystem=subsystem, ec=ec), filemark=filemark)
 
 
 class ImportSTMv1_0(Importer):  # noqa
@@ -436,10 +461,12 @@ class ImportSTMv1_0(Importer):  # noqa
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -467,8 +494,10 @@ class ImportSTMv1_0(Importer):  # noqa
 
             kegg = None if kegg.strip() == '' else kegg
 
-            yield CompoundEntry(id=compound_id, name=name,
-                                formula=formula, charge=charge, kegg=kegg)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name,
+                formula=formula, charge=charge, kegg=kegg), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -496,9 +525,11 @@ class ImportSTMv1_0(Importer):  # noqa
             subsystem = None if subsystem.strip() == '' else subsystem
             genes = self._try_parse_gene_association(reaction_id, genes)
 
-            yield ReactionEntry(id=reaction_id, name=name,
-                                genes=genes, equation=equation,
-                                subsystem=subsystem)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name,
+                genes=genes, equation=equation,
+                subsystem=subsystem), filemark=filemark)
 
 
 class ImportiJN746(Importer):
@@ -520,14 +551,18 @@ class ImportiJN746(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            compound_source = os.path.join(source, self.filenames[0])
-            reaction_source = os.path.join(source, self.filenames[1])
-        else:
+        if not os.path.isdir(source):
             raise ModelLoadError('Source must be a directory')
 
-        self._compound_book = xlrd.open_workbook(compound_source)
-        self._reaction_book = xlrd.open_workbook(reaction_source)
+        self._compound_context = FilePathContext(
+            os.path.join(source, self.filenames[0]))
+        self._reaction_context = FilePathContext(
+            os.path.join(source, self.filenames[1]))
+
+        self._compound_book = xlrd.open_workbook(
+            self._compound_context.filepath)
+        self._reaction_book = xlrd.open_workbook(
+            self._reaction_context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -562,9 +597,11 @@ class ImportiJN746(Importer):
             else:
                 cas = str(cas)
 
-            yield CompoundEntry(id=compound_id, name=name, formula=formula,
-                                formula_neutral=formula_neutral,
-                                charge=charge, kegg=kegg, cas=cas)
+            filemark = FileMark(self._compound_context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, formula=formula,
+                formula_neutral=formula_neutral,
+                charge=charge, kegg=kegg, cas=cas), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -593,9 +630,11 @@ class ImportiJN746(Importer):
             ec = None if ec.strip() == '' else ec
             genes = self._try_parse_gene_association(reaction_id, genes)
 
-            yield ReactionEntry(id=reaction_id, name=name,
-                                genes=genes, equation=equation,
-                                subsystem=subsystem, ec=ec)
+            filemark = FileMark(self._reaction_context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name,
+                genes=genes, equation=equation,
+                subsystem=subsystem, ec=ec), filemark=filemark)
 
 
 class ImportiJP815(Importer):
@@ -615,10 +654,12 @@ class ImportiJP815(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -642,7 +683,9 @@ class ImportiJP815(Importer):
             if m:
                 name = m.group(1)
 
-            yield CompoundEntry(id=compound_id, name=name, kegg=kegg)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, kegg=kegg), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -679,8 +722,10 @@ class ImportiJP815(Importer):
             subsystem = None if subsystem.strip() == '' else subsystem
             genes = self._try_parse_gene_association(reaction_id, genes)
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, subsystem=subsystem), filemark=filemark)
 
 
 class ImportiSyn731(Importer):
@@ -700,10 +745,12 @@ class ImportiSyn731(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -739,8 +786,10 @@ class ImportiSyn731(Importer):
             else:
                 kegg = None
 
-            yield CompoundEntry(id=compound_id, name=name, formula=formula,
-                                charge=charge, kegg=kegg)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, formula=formula,
+                charge=charge, kegg=kegg), filemark=filemark)
 
     def _read_reactions(self):
         sheet = self._book.sheet_by_name('Model')
@@ -767,8 +816,11 @@ class ImportiSyn731(Importer):
             genes = self._try_parse_gene_association(reaction_id, genes)
             ec = ec if ec.strip() != '' and ec != 'Undetermined' else None
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem, ec=ec)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, subsystem=subsystem,
+                ec=ec), filemark=filemark)
 
 
 class ImportiCce806(Importer):
@@ -790,14 +842,18 @@ class ImportiCce806(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            reaction_source = os.path.join(source, self.filenames[0])
-            compound_source = os.path.join(source, self.filenames[1])
-        else:
+        if not os.path.isdir(source):
             raise ModelLoadError('Source must be a directory')
 
-        self._compound_book = xlrd.open_workbook(compound_source)
-        self._reaction_book = xlrd.open_workbook(reaction_source)
+        self._compound_context = FilePathContext(
+            os.path.join(source, self.filenames[1]))
+        self._reaction_context = FilePathContext(
+            os.path.join(source, self.filenames[0]))
+
+        self._compound_book = xlrd.open_workbook(
+            self._compound_context.filepath)
+        self._reaction_book = xlrd.open_workbook(
+            self._reaction_context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -840,9 +896,11 @@ class ImportiCce806(Importer):
             else:
                 cas = None
 
-            yield CompoundEntry(id=compound_id, name=name, formula=formula,
-                                formula_neutral=formula, charge=charge,
-                                kegg=kegg, cas=cas)
+            filemark = FileMark(self._compound_context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, formula=formula,
+                formula_neutral=formula, charge=charge,
+                kegg=kegg, cas=cas), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -901,8 +959,11 @@ class ImportiCce806(Importer):
             else:
                 ec = None
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem, ec=ec)
+            filemark = FileMark(self._reaction_context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, subsystem=subsystem,
+                ec=ec), filemark=filemark)
 
 
 class ImportGSMN_TB(Importer):  # noqa
@@ -924,14 +985,18 @@ class ImportGSMN_TB(Importer):  # noqa
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            reaction_source = os.path.join(source, self.filenames[0])
-            compound_source = os.path.join(source, self.filenames[1])
-        else:
+        if not os.path.isdir(source):
             raise ModelLoadError('Source must be a directory')
 
-        self._compound_book = xlrd.open_workbook(compound_source)
-        self._reaction_book = xlrd.open_workbook(reaction_source)
+        self._compound_context = FilePathContext(
+            os.path.join(source, self.filenames[1]))
+        self._reaction_context = FilePathContext(
+            os.path.join(source, self.filenames[0]))
+
+        self._compound_book = xlrd.open_workbook(
+            self._compound_context.filepath)
+        self._reaction_book = xlrd.open_workbook(
+            self._reaction_context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -953,12 +1018,14 @@ class ImportGSMN_TB(Importer):  # noqa
 
             name = None if name.strip() == '' else name
 
-            yield CompoundEntry(id=compound_id, name=name)
+            filemark = FileMark(self._compound_context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name), filemark=filemark)
 
         def create_missing(compound_id, name=None):
             if name is None:
                 name = compound_id
-            return CompoundEntry(id=compound_id, name=name)
+            return CompoundEntry(dict(id=compound_id, name=name))
 
         # Generate missing compounds
         yield create_missing('MBT-HOLO', 'Mycobactin-Holo')
@@ -1015,8 +1082,11 @@ class ImportGSMN_TB(Importer):  # noqa
             subsystem = None if subsystem.strip() == '' else subsystem
             ec = None if ec.strip() == '' else ec
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem, ec=ec)
+            filemark = FileMark(self._reaction_context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, subsystem=subsystem,
+                ec=ec), filemark=filemark)
 
 
 class ImportiNJ661(Importer):
@@ -1036,10 +1106,12 @@ class ImportiNJ661(Importer):
 
     def import_model(self, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = self.title
@@ -1064,8 +1136,10 @@ class ImportiNJ661(Importer):
             except ValueError:
                 charge = None
 
-            yield CompoundEntry(id=compound_id, name=name, formula=formula,
-                                charge=charge)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, formula=formula,
+                charge=charge), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -1099,8 +1173,10 @@ class ImportiNJ661(Importer):
 
             subsystem = None if subsystem.strip() == '' else subsystem
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, subsystem=subsystem), filemark=filemark)
 
 
 class ImportGenericiNJ661mv(Importer):
@@ -1118,10 +1194,12 @@ class ImportGenericiNJ661mv(Importer):
 
     def import_model_named(self, name, source):
         """Import and return model instance with the given name."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
         model.name = name
@@ -1141,7 +1219,9 @@ class ImportGenericiNJ661mv(Importer):
 
             formula = self._try_parse_formula(compound_id, formula)
 
-            yield CompoundEntry(id=compound_id, name=name, formula=formula)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, formula=formula), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -1171,8 +1251,10 @@ class ImportGenericiNJ661mv(Importer):
 
             subsystem = None if subsystem.strip() == '' else subsystem
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, subsystem=subsystem), filemark=filemark)
 
 
 class ImportiNJ661m(ImportGenericiNJ661mv):
@@ -1227,10 +1309,12 @@ class ImportShewanellaOng(Importer):
 
     def import_model_named(self, name, col_index, source):
         """Import and return model instance."""
-        if os.path.isdir(source):
-            source = os.path.join(source, self.filename)
+        context = FilePathContext(source)
+        if os.path.isdir(context.filepath):
+            context = FilePathContext(os.path.join(source, self.filename))
 
-        self._book = xlrd.open_workbook(source)
+        self._context = context
+        self._book = xlrd.open_workbook(context.filepath)
         self._col_index = col_index
 
         model = MetabolicModel(self._read_compounds(), self._read_reactions())
@@ -1267,9 +1351,11 @@ class ImportShewanellaOng(Importer):
             else:
                 cas = str(cas)
 
-            yield CompoundEntry(id=compound_id, name=name, formula=formula,
-                                formula_neutral=formula_neutral, charge=charge,
-                                kegg=kegg, cas=cas)
+            filemark = FileMark(self._context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, formula=formula,
+                formula_neutral=formula_neutral, charge=charge,
+                kegg=kegg, cas=cas), filemark=filemark)
 
     def _read_reactions(self):
         arrows = (
@@ -1331,8 +1417,10 @@ class ImportShewanellaOng(Importer):
             name = None if name.strip() == '' else name.strip()
             subsystem = None if subsystem.strip() == '' else subsystem
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, subsystem=subsystem)
+            filemark = FileMark(self._context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, subsystem=subsystem), filemark=filemark)
 
 
 class ImportiMR1_799(ImportShewanellaOng):  # noqa
@@ -1410,6 +1498,8 @@ class ImportModelSEED(Importer):
             raise ModelLoadError(
                 'More than one .xls file found in source directory')
 
+        self._excel_context = FilePathContext(excel_sources[0])
+
         ptt_sources = glob.glob(os.path.join(source, '*.ptt'))
         if len(ptt_sources) == 0:
             raise ModelLoadError('No .ptt file found in source directory')
@@ -1417,7 +1507,7 @@ class ImportModelSEED(Importer):
             raise ModelLoadError(
                 'More than one .ptt file found in source directory')
 
-        self._book = xlrd.open_workbook(excel_sources[0])
+        self._book = xlrd.open_workbook(self._excel_context.filepath)
 
         with open(ptt_sources[0], 'r') as ptt_file:
             # Read mapping from location to gene ID from PTT file
@@ -1471,8 +1561,10 @@ class ImportModelSEED(Importer):
             else:
                 formula = None
 
-            yield CompoundEntry(id=compound_id, name=name, formula=formula,
-                                charge=charge)
+            filemark = FileMark(self._excel_context, i, None)
+            yield CompoundEntry(dict(
+                id=compound_id, name=name, formula=formula,
+                charge=charge), filemark=filemark)
 
     def _read_reactions(self, peg_mapping):
         sheet = self._book.sheet_by_name('Reactions')
@@ -1513,5 +1605,7 @@ class ImportModelSEED(Importer):
                 ec_list = frozenset([ec_list])
                 ec = next(iter(ec_list))
 
-            yield ReactionEntry(id=reaction_id, name=name, genes=genes,
-                                equation=equation, ec=ec)
+            filemark = FileMark(self._excel_context, i, None)
+            yield ReactionEntry(dict(
+                id=reaction_id, name=name, genes=genes,
+                equation=equation, ec=ec), filemark=filemark)

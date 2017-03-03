@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015-2016  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2017  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
 """Common metabolic model representations for imported models.
 
@@ -45,88 +45,6 @@ class ModelLoadError(ImportError):
 
 class ParseError(ImportError):
     """Exception used to signal an error parsing the model files."""
-
-
-class _BaseEntry(object):
-    """Base entry in loaded model."""
-
-    def __init__(self, **kwargs):
-        self._values = {key: value for key, value in iteritems(kwargs)
-                        if value is not None}
-        if 'id' not in self._values:
-            raise ValueError('No id was provided')
-        self._id = self._values['id']
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def properties(self):
-        return self._values
-
-
-class CompoundEntry(_BaseEntry):
-    """Compound entry in loaded model."""
-
-    @property
-    def name(self):
-        """Compound name."""
-        return self._values.get('name', None)
-
-    @property
-    def formula(self):
-        """Compound formula."""
-        return self._values.get('formula', None)
-
-    @property
-    def formula_neutral(self):
-        """Compound formula (neutral)."""
-        return self._values.get('formula_neutral', None)
-
-    @property
-    def charge(self):
-        """Compound charge."""
-        return self._values.get('charge', None)
-
-    @property
-    def kegg(self):
-        """KEGG identifier."""
-        return self._values.get('kegg', None)
-
-    @property
-    def cas(self):
-        """CAS identifier."""
-        return self._values.get('cas', None)
-
-
-class ReactionEntry(_BaseEntry):
-    """Reaction entry in loaded model."""
-
-    @property
-    def name(self):
-        """Reaction name."""
-        return self._values.get('name', None)
-
-    @property
-    def genes(self):
-        """Gene list or boolean expression."""
-        return self._values.get('genes', None)
-
-    @property
-    def equation(self):
-        """Reaction equation."""
-        return self._values.get('equation', None)
-
-    @property
-    def subsystem(self):
-        """Reaction subsystem classification."""
-        return self._values.get('subsystem', None)
-
-    @property
-    def ec(self):
-        """EC classifier."""
-        return self._values.get('ec', None)
 
 
 class MetabolicModel(object):
@@ -323,10 +241,10 @@ def detect_extracellular_compartment(model):
     extracellular_key = Counter()
 
     for reaction_id, reaction in iteritems(model.reactions):
-        if 'equation' not in reaction.properties:
+        equation = reaction.equation
+        if equation is None:
             continue
 
-        equation = reaction.properties['equation']
         if len(equation.compounds) == 1:
             compound, _ = equation.compounds[0]
             compartment = compound.compartment

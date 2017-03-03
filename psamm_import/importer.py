@@ -135,10 +135,10 @@ def get_default_compartment(model):
     default_compartment = 'c'
     default_key = set()
     for reaction_id, reaction in iteritems(model.reactions):
-        if 'equation' not in reaction.properties:
+        equation = reaction.equation
+        if equation is None:
             continue
 
-        equation = reaction.properties['equation']
         for compound, _ in equation.compounds:
             default_key.add(compound.compartment)
 
