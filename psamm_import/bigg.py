@@ -42,8 +42,9 @@ def main():
         description='Import from BiGG database')
     parser.add_argument('--dest', metavar='path', default='.',
                         help='Destination directory (default is ".")')
-    parser.add_argument('--no-medium', action='store_true',
-                        help='Disable importing exchange reactions as medium')
+    parser.add_argument('--no-exchange', action='store_true',
+                        help=('Disable importing exchange reactions as'
+                              ' exchange compound file.'))
     parser.add_argument('--split-subsystem', action='store_true',
                         help='Enable splitting reaction files by subsystem')
     parser.add_argument('--force', action='store_true',
@@ -112,5 +113,6 @@ def main():
     dest = args.dest
     mkdir_p(dest)
 
-    write_yaml_model(model, dest, convert_medium=not args.no_medium,
+    convert_exchange = not args.no_exchange
+    write_yaml_model(model, dest, convert_exchange=convert_exchange,
                      split_subsystem=args.split_subsystem)
