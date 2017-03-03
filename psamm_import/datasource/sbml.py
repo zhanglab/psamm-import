@@ -67,6 +67,7 @@ class BaseImporter(Importer):
             self._reader = self._open_reader(f)
 
         model = MetabolicModel(self._reader.species, self._reader.reactions)
+        model.compartments.update((c.id, c) for c in self._reader.compartments)
 
         if self._reader.name is not None:
             model.name = self._reader.name
