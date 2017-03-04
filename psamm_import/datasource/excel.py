@@ -864,7 +864,7 @@ class ImportiCce806(Importer):
 
     def _read_compounds(self):
         sheet = self._compound_book.sheet_by_name('Table S2')
-        for i in range(1, sheet.nrows):
+        for i in range(2, sheet.nrows):
             (compound_id, name, formula, charge, cas, formula_neutral, _,
                 kegg) = sheet.row_values(i)
 
