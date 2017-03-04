@@ -14,13 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2017  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
 from setuptools import setup, find_packages
 
 setup(
     name='psamm-import',
-    version='0.14',
+    version='0.15',
     description='PSAMM model importers',
     maintainer='Jon Lund Steffensen',
     maintainer_email='jon_steffensen@uri.edu',
@@ -66,6 +66,6 @@ setup(
     install_requires=[
         'PyYAML>=3.11,<4.0',
         'xlrd',
-        'psamm>=0.27',
+        'psamm>=0.28',
         'six'
     ])

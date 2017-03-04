@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PSAMM.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015  Jon Lund Steffensen <jon_steffensen@uri.edu>
+# Copyright 2015-2017  Jon Lund Steffensen <jon_steffensen@uri.edu>
 
 """Importer for the COBRApy JSON format."""
 
@@ -23,12 +23,14 @@ import json
 import logging
 import decimal
 
-from six import iteritems
+from six import iteritems, itervalues
 
 from psamm.reaction import Reaction, Compound, Direction
+from psamm.datasource.entry import (DictCompoundEntry as CompoundEntry,
+                                    DictReactionEntry as ReactionEntry,
+                                    DictCompartmentEntry as CompartmentEntry)
 
-from ..model import (Importer as BaseImporter, ModelLoadError,
-                     CompoundEntry, ReactionEntry, MetabolicModel)
+from ..model import Importer as BaseImporter, ModelLoadError, MetabolicModel
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +72,10 @@ class Importer(BaseImporter):
     def _import(self, file):
         model_doc = json.load(file, parse_float=_float_parser)
         model = MetabolicModel(
-            model_doc.get('id', 'COBRA JSON model'),
             self._read_compounds(model_doc), self._read_reactions(model_doc))
+        model.compartments.update(
+            (c.id, c) for c in self._read_compartments(model_doc))
+        model.name = model_doc.get('id', 'COBRA JSON model')
 
         biomass_reaction = None
         objective_reactions = set()
@@ -90,31 +94,50 @@ class Importer(BaseImporter):
 
         model.biomass_reaction = biomass_reaction
 
+        # Set compartment in reaction compounds
+        compound_compartment = {}
+        for compound in itervalues(model.compounds):
+            compartment = compound.properties.pop('compartment')
+            compound_compartment[compound.id] = compartment
+
+        for reaction in itervalues(model.reactions):
+            equation = reaction.equation
+            if equation is None:
+                continue
+
+            # Translate compartments in reaction
+            left = ((c.in_compartment(compound_compartment[c.name]), v) for
+                    c, v in equation.left)
+            right = ((c.in_compartment(compound_compartment[c.name]), v) for
+                     c, v in equation.right)
+            reaction.properties['equation'] = Reaction(
+                equation.direction, left, right)
+
         return model
+
+    def _read_compartments(self, doc):
+        for compartment, name in iteritems(doc.get('compartments', {})):
+            yield CompartmentEntry(dict(id=compartment, name=name))
 
     def _read_compounds(self, doc):
         for compound in doc['metabolites']:
-            id = compound['id']
-            name = compound.get('name')
-            charge = compound.get('charge')
+            entry = CompoundEntry(compound)
+            if 'formula' in entry.properties:
+                formula = self._try_parse_formula(
+                    entry.id, entry.properties['formula'])
+                if formula is not None:
+                    entry.properties['formula'] = formula
+            yield entry
 
-            formula_string = compound.get('formula')
-            if formula_string is not None:
-                formula = self._try_parse_formula(id, formula_string)
-            else:
-                formula = None
-
-            yield CompoundEntry(id=id, name=name, charge=charge,
-                                formula=formula)
-
-    def _parse_reaction_equation(self, r):
+    def _parse_reaction_equation(self, entry):
+        metabolites = entry.properties.pop('metabolites')
         compounds = ((Compound(metabolite), value)
-                     for metabolite, value in iteritems(r['metabolites']))
-        if (r.get('lower_bound') == 0 and
-                r.get('upper_bound') != 0):
+                     for metabolite, value in iteritems(metabolites))
+        if (entry.properties.get('lower_bound') == 0 and
+                entry.properties.get('upper_bound') != 0):
             direction = Direction.Forward
-        elif (r.get('lower_bound') != 0 and
-              r.get('upper_bound') == 0):
+        elif (entry.properties.get('lower_bound') != 0 and
+              entry.properties.get('upper_bound') == 0):
             direction = Direction.Reverse
         else:
             direction = Direction.Both
@@ -122,20 +145,25 @@ class Importer(BaseImporter):
 
     def _read_reactions(self, doc):
         for reaction in doc['reactions']:
-            id = reaction['id']
-            name = reaction.get('name', None)
-            equation = self._parse_reaction_equation(reaction)
-            lower_flux = reaction.get('lower_bound')
-            upper_flux = reaction.get('upper_bound')
-            subsystem = reaction.get('subsystem')
+            entry = ReactionEntry(reaction)
 
-            genes = reaction.get('gene_reaction_rule')
-            if genes is not None:
-                genes = self._try_parse_gene_association(id, genes)
+            entry.properties['equation'] = (
+                self._parse_reaction_equation(entry))
 
-            yield ReactionEntry(id=id, name=name, equation=equation,
-                                lower_flux=lower_flux, upper_flux=upper_flux,
-                                subsystem=subsystem, genes=genes)
+            if 'lower_bound' in entry.properties:
+                entry.properties['lower_flux'] = (
+                    entry.properties.pop('lower_bound'))
+            if 'upper_bound' in entry.properties:
+                entry.properties['upper_flux'] = (
+                    entry.properties.pop('upper_bound'))
+
+            if 'gene_reaction_rule' in entry.properties:
+                genes = self._try_parse_gene_association(
+                    entry.id, entry.properties.pop('gene_reaction_rule'))
+                if genes is not None:
+                    entry.properties['genes'] = genes
+
+            yield entry
 
     def import_model(self, source):
         """Import and return model instance."""
