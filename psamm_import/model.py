@@ -321,9 +321,10 @@ def convert_exchange_to_compounds(model):
                 lower_flux = lower * abs(value)
             if upper is not None:
                 upper_flux = upper * abs(value)
-        elif equation.direction == Direction.Forward:
+
+        if lower_flux is None and equation.direction == Direction.Forward:
             lower_flux = 0.0
-        elif equation.direction == Direction.Reverse:
+        if upper_flux is None and equation.direction == Direction.Reverse:
             upper_flux = 0.0
 
         # If the stoichiometric value of the reaction is reversed, the flux

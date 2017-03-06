@@ -265,6 +265,27 @@ def reactions_to_files(model, dest, writer, split_subsystem):
     return reaction_files
 
 
+def _get_output_limit(limit, default_limit):
+    """Return limit to output given default limit."""
+    return limit if limit != default_limit else None
+
+
+def _generate_limit_items(lower, upper):
+    """Yield key, value pairs for limits dictionary.
+
+    Yield pairs of key, value where key is ``lower``, ``upper`` or ``fixed``.
+    A key, value pair is emitted if the bounds are not None.
+    """
+    # Use value + 0 to convert any -0.0 to 0.0 which looks better.
+    if lower is not None and upper is not None and lower == upper:
+        yield 'fixed', upper + 0
+    else:
+        if lower is not None:
+            yield 'lower', lower + 0
+        if upper is not None:
+            yield 'upper', upper + 0
+
+
 def model_exchange(model):
     """Return exchange definition as YAML dict."""
     # Determine the default flux limits. If the value is already at the
@@ -281,12 +302,9 @@ def model_exchange(model):
         if reaction_id is not None:
             d['reaction'] = reaction_id
 
-        # Assign flux limits if different than the defaults. Also, add 0 so
-        # that -0.0 is converted to plain 0.0 which looks better in the output.
-        if lower is not None and lower != lower_default:
-            d['lower'] = lower + 0
-        if upper is not None and upper != upper_default:
-            d['upper'] = upper + 0
+        lower = _get_output_limit(lower, lower_default)
+        upper = _get_output_limit(upper, upper_default)
+        d.update(_generate_limit_items(lower, upper))
 
         compounds.append(d)
 
@@ -317,21 +335,12 @@ def model_reaction_limits(model):
         lower_flux, upper_flux = None, None
         if reaction_id in model.limits:
             lower, upper = model.limits[reaction_id]
-            if lower is not None and lower != lower_default:
-                lower_flux = lower
-            if upper is not None and upper != upper_default:
-                upper_flux = upper
+            lower_flux = _get_output_limit(lower, lower_default)
+            upper_flux = _get_output_limit(upper, upper_default)
 
         if lower_flux is not None or upper_flux is not None:
             d = OrderedDict([('reaction', reaction_id)])
-            if (lower_flux is not None and upper_flux is not None and
-                    lower_flux == upper_flux):
-                d['fixed'] = upper_flux
-            else:
-                if lower_flux is not None:
-                    d['lower'] = lower_flux
-                if upper_flux is not None:
-                    d['upper'] = upper_flux
+            d.update(_generate_limit_items(lower_flux, upper_flux))
 
             yield d
 
