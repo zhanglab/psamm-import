@@ -28,6 +28,7 @@ from psamm.datasource import sbml
 from psamm.datasource.entry import (DictCompoundEntry as CompoundEntry,
                                     DictReactionEntry as ReactionEntry)
 from psamm.datasource.context import FilePathContext
+from psamm.expression import boolean
 from psamm.reaction import Compound, Reaction
 
 from ..model import Importer, ParseError, ModelLoadError, MetabolicModel
@@ -407,5 +408,12 @@ class NonstrictImporter(BaseImporter):
 
         model.reactions.clear()
         model.reactions.update((r.id, r) for r in new_reactions)
+
+        # Update model genes
+        model.genes.clear()
+        for reaction in itervalues(model.reactions):
+            if reaction.genes is not None and isinstance(
+                    reaction.genes, boolean.Expression):
+                model.genes.update(v.symbol for v in reaction.genes.variables)
 
         return id_map
