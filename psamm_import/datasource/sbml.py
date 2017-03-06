@@ -25,7 +25,8 @@ import logging
 from six import iteritems, itervalues
 
 from psamm.datasource import sbml
-from psamm.datasource.entry import (DictCompoundEntry as CompoundEntry,
+from psamm.datasource.entry import (DictCompartmentEntry as CompartmentEntry,
+                                    DictCompoundEntry as CompoundEntry,
                                     DictReactionEntry as ReactionEntry)
 from psamm.datasource.context import FilePathContext
 from psamm.expression import boolean
@@ -237,13 +238,15 @@ class NonstrictImporter(BaseImporter):
             logger.info('Removing compartment prefix {!r}'.format(
                 compartment_prefix))
 
+        compartment_id_map = self._convert_compartments(
+            model, compartment_prefix=compartment_prefix)
         compound_id_map = self._convert_compounds(
-            model, compound_prefix=compound_prefix,
-            compartment_prefix=compartment_prefix)
+            model, compartment_id_map=compartment_id_map,
+            compound_prefix=compound_prefix)
         reaction_id_map = self._convert_reactions(
-            model, compound_id_map,
-            reaction_prefix=reaction_prefix,
-            compartment_prefix=compartment_prefix)
+            model, compartment_id_map=compartment_id_map,
+            compound_id_map=compound_id_map,
+            reaction_prefix=reaction_prefix)
 
         # Remove prefix from biomass reaction
         if reaction_prefix is not None and model.biomass_reaction is not None:
@@ -281,8 +284,30 @@ class NonstrictImporter(BaseImporter):
             s = s.replace(escape, symbol)
         return s
 
-    def _convert_compounds(self, model, compound_prefix=None,
-                           compartment_prefix=None):
+    def _convert_compartments(self, model, compartment_prefix=None):
+        """Convert SBML compartments by removing prefixes."""
+        new_compartments = []
+        id_map = {}
+        for compartment in itervalues(model.compartments):
+            properties = dict(compartment.properties)
+            old_id = compartment.id
+
+            if (compartment_prefix is not None and
+                    properties['id'].startswith(compartment_prefix)):
+                properties['id'] = properties['id'][len(compartment_prefix):]
+
+            if old_id != properties['id']:
+                id_map[old_id] = properties['id']
+            new_compartments.append(CompartmentEntry(
+                properties, filemark=compartment.filemark))
+
+        model.compartments.clear()
+        model.compartments.update((c.id, c) for c in new_compartments)
+
+        return id_map
+
+    def _convert_compounds(self, model, compartment_id_map={},
+                           compound_prefix=None):
         """Convert SBML species entries to compounds."""
         new_compounds = []
         id_map = {}
@@ -294,10 +319,9 @@ class NonstrictImporter(BaseImporter):
                 if properties['id'].startswith(compound_prefix):
                     properties['id'] = properties['id'][len(compound_prefix):]
 
-            if 'compartment' in properties and compartment_prefix is not None:
-                if properties['compartment'].startswith(compartment_prefix):
-                    properties['compartment'] = (
-                        properties['compartment'][len(compartment_prefix):])
+            if 'compartment' in properties:
+                properties['compartment'] = compartment_id_map.get(
+                    properties['compartment'], properties['compartment'])
 
             properties['id'] = self._convert_cobra_id(properties['id'])
 
@@ -337,8 +361,8 @@ class NonstrictImporter(BaseImporter):
 
         return id_map
 
-    def _convert_reactions(self, model, compound_id_map,
-                           reaction_prefix=None, compartment_prefix=None):
+    def _convert_reactions(self, model, compartment_id_map={},
+                           compound_id_map={}, reaction_prefix=None):
         """Convert SBML reaction entries to reactions."""
         new_reactions = []
         id_map = {}
@@ -389,11 +413,9 @@ class NonstrictImporter(BaseImporter):
             for compound, value in properties['equation'].compounds:
                 name = compound_id_map.get(compound.name, compound.name)
 
-                compartment = compound.compartment
-                if (compartment_prefix is not None and
-                        compartment is not None and
-                        compartment.startswith(compartment_prefix)):
-                    compartment = compartment[len(compartment_prefix):]
+                # Translate compartment to new ID, if available.
+                compartment = compartment_id_map.get(
+                    compound.compartment, compound.compartment)
 
                 compounds.append(
                     (Compound(name, compartment=compartment), value))
