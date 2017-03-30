@@ -149,7 +149,6 @@ class NonstrictImporter(BaseImporter):
         model = super(NonstrictImporter, self).import_model(source)
 
         objective_reactions = set()
-        biomass_reaction = model.biomass_reaction
         for reaction in self._reader.reactions:
             # Check whether species occur multiple times
             compounds = set()
@@ -204,14 +203,18 @@ class NonstrictImporter(BaseImporter):
                     current_upper = upper_bound
                 model.limits[reaction.id] = current_lower, current_upper
 
-        if len(objective_reactions) == 1:
-            biomass_reaction = next(iter(objective_reactions))
-            logger.info('Detected biomass reaction: {}'.format(
-                biomass_reaction))
-        elif len(objective_reactions) > 1:
-            logger.warning(
-                'Multiple reactions are used as the'
-                ' biomass reaction: {}'.format(objective_reactions))
+        # Detect biomass reaction from objective parameters. This is only
+        # done if the objective was not available from the standardized
+        # encoding of objectives.
+        if model.biomass_reaction is None:
+            if len(objective_reactions) == 1:
+                model.biomass_reaction = next(iter(objective_reactions))
+                logger.info('Detected biomass reaction: {}'.format(
+                    model.biomass_reaction))
+            elif len(objective_reactions) > 1:
+                logger.warning(
+                    'Multiple reactions are used as the'
+                    ' biomass reaction: {}'.format(objective_reactions))
 
         # Find compartments
         compartments = set()
