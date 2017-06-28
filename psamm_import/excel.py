@@ -26,14 +26,14 @@ import glob
 import xlrd
 from six import string_types
 
+from psamm.datasource import native
 from psamm.datasource.reaction import ReactionParser
 from psamm.datasource.entry import (DictCompoundEntry as CompoundEntry,
                                     DictReactionEntry as ReactionEntry)
 from psamm.datasource.context import FileMark, FilePathContext
 from psamm.reaction import Reaction, Compound, Direction
 from psamm.expression import boolean
-
-from ..model import Importer, ModelLoadError, MetabolicModel
+from psamm.importer import Importer, ModelLoadError
 
 
 class ImportiMA945(Importer):
@@ -59,10 +59,12 @@ class ImportiMA945(Importer):
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.biomass_reaction = 'ST_biomass_core'
         model.extracellular_compartment = 'e'
+        model.reactions.update(self._read_reactions())
+        model.compounds.update(self._read_compounds())
 
         return model
 
@@ -182,9 +184,11 @@ class ImportiRR1083(Importer):
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.extracellular_compartment = 'e'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -273,10 +277,12 @@ class ImportiJO1366(Importer):
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.biomass_reaction = 'Ec_biomass_iJO1366_core_53p95M'
         model.extracellular_compartment = 'e'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -369,9 +375,11 @@ class EColiTextbookImport(Importer):
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.extracellular_compartment = 'e'
+        model.reactions.update(self._read_reactions())
+        model.compounds.update(self._read_compounds())
 
         return model
 
@@ -468,10 +476,12 @@ class ImportSTMv1_0(Importer):  # noqa
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.biomass_reaction = 'biomass_iRR1083_metals'
         model.extracellular_compartment = 'e'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -564,9 +574,11 @@ class ImportiJN746(Importer):
         self._reaction_book = xlrd.open_workbook(
             self._reaction_context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.extracellular_compartment = 'e'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -661,8 +673,10 @@ class ImportiJP815(Importer):
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -752,10 +766,12 @@ class ImportiSyn731(Importer):
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.biomass_reaction = 'Biomass_Hetero'
         model.extracellular_compartment = 'e'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -855,10 +871,12 @@ class ImportiCce806(Importer):
         self._reaction_book = xlrd.open_workbook(
             self._reaction_context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.biomass_reaction = 'CyanoBM (average)'
         model.extracellular_compartment = 'e'
+        model.reactions.update(self._read_reactions())
+        model.compounds.update(self._read_compounds())
 
         return model
 
@@ -998,8 +1016,10 @@ class ImportGSMN_TB(Importer):  # noqa
         self._reaction_book = xlrd.open_workbook(
             self._reaction_context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -1113,9 +1133,11 @@ class ImportiNJ661(Importer):
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = self.title
         model.extracellular_compartment = 'e'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -1201,10 +1223,12 @@ class ImportGenericiNJ661mv(Importer):
         self._context = context
         self._book = xlrd.open_workbook(context.filepath)
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = name
         model.biomass_reaction = 'biomass_Mtb_9_60atp_test_NOF'
         model.extracellular_compartment = 'e'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -1317,10 +1341,12 @@ class ImportShewanellaOng(Importer):
         self._book = xlrd.open_workbook(context.filepath)
         self._col_index = col_index
 
-        model = MetabolicModel(self._read_compounds(), self._read_reactions())
+        model = native.NativeModel()
         model.name = name
         model.biomass_reaction = self.biomass_names[col_index]
         model.extracellular_compartment = 'e'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions())
 
         return model
 
@@ -1539,9 +1565,10 @@ class ImportModelSEED(Importer):
 
             peg_mapping[peg_id] = location_mapping[start, stop, direction]
 
-        model = MetabolicModel(
-            self._read_compounds(), self._read_reactions(peg_mapping))
+        model = native.NativeModel()
         model.name = 'ModelSEED model'
+        model.compounds.update(self._read_compounds())
+        model.reactions.update(self._read_reactions(peg_mapping))
 
         return model
 
