@@ -1,14 +1,19 @@
-PSAMM model importers
-=====================
+PSAMM Excel model importers
+===========================
+
+**Note: This package no longer includes the SBML and COBRA JSON importers.**
+The SBML and COBRA JSON importers have been merged into the main PSAMM
+package and the import commands (``psamm-import`` and ``psamm-import-bigg``)
+are now available from the PSAMM package.
 
 PSAMM_ is an open source software that is designed for the curation and
 analysis of metabolic models. It supports model version tracking, model
 annotation, data integration, data parsing and formatting, consistency
 checking, automatic gap filling, and model simulations.
 
-The PSAMM model importers in this repository is collection of tools that allow
-metabolic models to be converted from various formats to the internal
-YAML-based format used by PSAMM.
+The PSAMM Excel model importers in this repository is a collection of tools
+that allow metabolic models to be converted from model-specific Excel formats
+to the internal YAML-based format used by PSAMM.
 
 The ``master`` branch tracks the latest release while the ``develop`` branch is
 the latest version in development. Please apply any pull requests to the
@@ -19,44 +24,15 @@ the latest version in development. Please apply any pull requests to the
 Overview
 --------
 
-This package provides two additional commands, ``psamm-import`` and
-``psamm-import-bigg``. The ``psamm-import`` command allows the user to convert
-various model files to YAML format. The conversion of SBML, COBRA JSON and
-a number of Excel model formats are supported. The Excel format importers are
-manually designed to load a specific model correctly, so only a limited set of
-Excel models can be loaded. The SBML and COBRA JSON importers can be used with
-any valid model in those formats. To see a list of all the supported importers,
-use the following command:
+This package provides additional Excel format importers that are manually
+designed to load a specific model correctly, so only a limited set of Excel
+models can be loaded. After installing this package, the Excel importers will
+become available from ``psamm-import``. Use the following command to see a
+list of models that can be imported:
 
 .. code-block:: shell
 
     $ psamm-import list
-
-To import an SBML model from the file ``ecoli_sbml_file.xml`` and extract it
-as a YAML model in the directory ``ecoli_yaml``:
-
-.. code-block:: shell
-
-    $ psamm-import sbml --source ecoli_sbml_file.xml \
-        --dest ecoli_yaml
-
-The ``psamm-import-bigg`` command can be used to automatically download a model
-from the BiGG_ online model database and convert it to YAML format. This
-requires internet connection while running the command. To see a list of all
-the available models in the database, use the following command:
-
-.. code-block:: shell
-
-    $ psamm-import-bigg list
-
-To import the ``e_coli_core`` model and extract it as a YAML model in the
-directory ``e_coli_core``:
-
-.. code-block:: shell
-
-    $ psamm-import-bigg e_coli_core --dest e_coli_core
-
-.. _BiGG: http://bigg.ucsd.edu/
 
 Install and documentation
 -------------------------
